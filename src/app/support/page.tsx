@@ -15,7 +15,7 @@ export const metadata: Metadata = { title: `Support · ${BRAND_NAME}` };
 const FAQ = [
   {
     q: "When do my returns arrive?",
-    a: `Every day at ${payoutClockLabel()} Kampala time, once the coffee has been processed and sold to market vendors. They are credited automatically — there is nothing to press.`,
+    a: `Every day at ${payoutClockLabel()} Kampala time, for the term of the product you activated. Returns are credited automatically — there is nothing to press.`,
   },
   {
     q: "My deposit has not arrived.",

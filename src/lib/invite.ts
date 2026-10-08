@@ -1,6 +1,6 @@
 import { BRAND_NAME } from "@/lib/platform";
 
-const STORAGE_KEY = "coffeeug_invite";
+const STORAGE_KEY = "quantummine_invite";
 
 export function normalizeInviteCode(raw: string | null | undefined) {
   const code = (raw ?? "").trim().toUpperCase();
@@ -44,5 +44,5 @@ export function inviteUrl(origin: string, code: string) {
 }
 
 export function inviteShareText(code: string, url: string) {
-  return `Join ${BRAND_NAME} with my invite code ${code}. Activate a coffee processing plant and earn every day.\n${url}`;
+  return `Join ${BRAND_NAME} with my invite code ${code}. Activate a trading product and earn every day.\n${url}`;
 }

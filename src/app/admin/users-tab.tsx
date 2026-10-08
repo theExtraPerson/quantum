@@ -253,9 +253,9 @@ function UserDetail({ row, onChanged }: { row: UserRow; onChanged: () => void })
           <Stat label="Balance" value={formatMoney(detail.wallet.balance)} accent />
           <Stat label="Deposited" value={formatMoney(detail.wallet.deposited)} />
           <Stat label="Withdrawn" value={formatMoney(detail.wallet.withdrawn)} />
-          <Stat label="Plant income" value={formatMoney(detail.wallet.plantEarned)} />
+          <Stat label="Product income" value={formatMoney(detail.wallet.plantEarned)} />
           <Stat label="Commission" value={formatMoney(detail.wallet.referralEarned)} />
-          <Stat label="Spent on plants" value={formatMoney(detail.wallet.spent)} />
+          <Stat label="Spent on products" value={formatMoney(detail.wallet.spent)} />
         </div>
       </section>
 
@@ -320,7 +320,7 @@ function UserDetail({ row, onChanged }: { row: UserRow; onChanged: () => void })
             ))}
           </div>
         ) : (
-          <p className="text-xs text-muted-foreground">No plants activated.</p>
+          <p className="text-xs text-muted-foreground">No products activated.</p>
         )}
       </section>
 

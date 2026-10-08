@@ -15,7 +15,7 @@ import {
   Settings,
   Share2,
   Shield,
-  Sprout,
+  Bot,
   Users,
 } from "@/components/icons";
 import { useIsAdmin, useSessionUser } from "@/hooks/use-app-data";
@@ -47,7 +47,7 @@ const TABS: { id: Tab; label: string; icon: React.ComponentType<{ className?: st
   { id: "users", label: "Members", icon: Users },
   { id: "referrals", label: "Referrals", icon: Share2 },
   { id: "activations", label: "Activations", icon: Package },
-  { id: "plants", label: "Plants", icon: Sprout },
+  { id: "plants", label: "Products", icon: Bot },
   { id: "admins", label: "Admins", icon: Shield },
   { id: "settings", label: "Settings", icon: Settings },
 ];
@@ -108,7 +108,7 @@ export default function AdminPage() {
             type="button"
             onClick={() => setTab(id)}
             className={`flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold text-white transition-colors ${
-              tab === id ? "bg-primary shadow-[inset_0_0_0_2px_#ffffff]" : "bg-[#14331f]"
+              tab === id ? "bg-primary shadow-[inset_0_0_0_2px_#ffffff]" : "bg-[#0B1F4B]"
             }`}
           >
             <Icon className="size-3.5" />
@@ -176,7 +176,7 @@ function OverviewTab({
           <Stat label="Deposits received" value={formatMoney(overview.approvedDeposits)} />
           <Stat label="Withdrawals paid" value={formatMoney(overview.paidWithdrawals)} />
           <Stat label="Fees collected" value={formatMoney(overview.withdrawalFees)} accent />
-          <Stat label="Plant volume" value={formatMoney(overview.plantVolume)} />
+          <Stat label="Product volume" value={formatMoney(overview.plantVolume)} />
           <Stat label="Returns paid out" value={formatMoney(overview.dailyIncomePaid)} />
           <Stat label="Commission paid" value={formatMoney(overview.commissionPaid)} />
         </div>
@@ -191,10 +191,10 @@ function OverviewTab({
           {formatMoney(overview.walletLiability)}
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
-          Sum of every ledger entry across all members — what CoffeeUG currently owes.
+          Sum of every ledger entry across all members — what QuantumMine AI currently owes.
         </p>
         <div className="mt-3 grid grid-cols-2 gap-2">
-          <Stat label="Active plants" value={String(overview.activePlants)} />
+          <Stat label="Active products" value={String(overview.activePlants)} />
           <Stat
             label="Net cash in"
             value={formatMoney(overview.approvedDeposits - overview.paidWithdrawals)}

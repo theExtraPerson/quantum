@@ -13,17 +13,17 @@ export default function OrdersPage() {
   const { data: orders, isLoading } = useOrders(user?.id);
 
   return (
-    <AppShell title="My plants" back="/me">
+    <AppShell title="Revenue" back="/me">
       <div className="space-y-3 px-4 py-4">
         {isLoading ? <p className="text-sm text-muted-foreground">Loading…</p> : null}
 
         {!isLoading && !orders?.length ? (
           <div className="app-card space-y-3 p-4 text-center">
             <p className="text-sm text-muted-foreground">
-              You have not activated a processing plant yet.
+              You have not activated a trading product yet.
             </p>
-            <Link href="/plants">
-              <Button className="w-full">Start processing</Button>
+            <Link href="/products">
+              <Button className="w-full">View trading products</Button>
             </Link>
           </div>
         ) : null}

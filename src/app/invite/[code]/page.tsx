@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { InviteLanding } from "./invite-landing";
 import { createClient } from "@/lib/supabase/server";
-import { BRAND_NAME, SITE_URL } from "@/lib/platform";
+import { BRAND_NAME, SITE_URL, payoutClockLabel } from "@/lib/platform";
 import { normalizeInviteCode } from "@/lib/invite";
 
 export async function generateMetadata({
@@ -13,7 +13,7 @@ export async function generateMetadata({
   const invite = normalizeInviteCode(code) || code.toUpperCase().slice(0, 10);
   const title = `Join ${BRAND_NAME} with code ${invite}`;
   const description =
-    "Activate a coffee processing plant and collect your returns at 10PM every day for 20 days.";
+    `Activate a QuantumMine AI trading product and collect its daily income at ${payoutClockLabel()}.`;
 
   return {
     title,

@@ -15,7 +15,7 @@ export type Product = {
   price: number;
   daily_income: number;
   days: number;
-  category: "plant" | "bonus";
+  category: "product" | "bonus";
   image_url: string | null;
   sort_order: number;
   active: boolean;
@@ -26,7 +26,7 @@ export type PlantOrder = {
   user_id: string;
   product_id: string | null;
   product_name: string;
-  product_category: "plant" | "bonus";
+  product_category: "product" | "bonus";
   price: number;
   daily_income: number;
   days: number;
@@ -47,7 +47,8 @@ export type LedgerType =
   | "commission"
   | "withdrawal"
   | "withdrawal_fee"
-  | "adjustment";
+  | "adjustment"
+  | "cashback";
 
 export type LedgerEntry = {
   id: number;

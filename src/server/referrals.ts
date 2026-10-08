@@ -100,7 +100,7 @@ export async function loadReferralSnapshot(admin: SupabaseClient): Promise<Refer
       admin
         .from("orders")
         .select("user_id, price")
-        .eq("product_category", "plant")
+        .eq("product_category", "product")
         .in("status", ["active", "completed"])
         .limit(5000),
     ),

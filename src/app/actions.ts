@@ -8,55 +8,31 @@ function rpcMessage(error: { message: string } | null) {
   return error.message.replace(/^.*?:\s*/, "");
 }
 
-/** Put a chosen amount into the processing plant. Returns are 10% of that amount. */
-export async function startProcessing(amount: number) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Please sign in first." };
-
-  const invested = Math.round(Number(amount));
-  if (!Number.isFinite(invested) || invested <= 0) {
-    return { error: "Enter an amount to process." };
-  }
-
-  const { error } = await supabase.rpc("invest_in_plant", {
-    _amount: invested,
-    _note: null,
-  });
-  if (error) return { error: rpcMessage(error) };
-
-  revalidatePath("/");
-  revalidatePath("/plants");
-  revalidatePath("/orders");
-  revalidatePath("/records");
-  revalidatePath("/team");
-  revalidatePath("/me");
-  return { error: null };
-}
-
-/** Activate a processing plant. All the money rules live in the SQL function. */
+/** Activate a trading product. All the money rules live in the SQL function. */
 export async function activatePlant(productId: string, note?: string) {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "Please sign in first." };
+  if (!user) return { error: "Please sign in first.", cashback: 0 };
 
-  const { error } = await supabase.rpc("purchase_product", {
+  const { data, error } = await supabase.rpc("purchase_product", {
     _product_id: productId,
     _note: note?.trim() || null,
   });
-  if (error) return { error: rpcMessage(error) };
+  if (error) return { error: rpcMessage(error), cashback: 0 };
+
+  const payload = (typeof data === "string" ? JSON.parse(data) : data) as {
+    cashback?: number;
+  } | null;
 
   revalidatePath("/");
-  revalidatePath("/plants");
+  revalidatePath("/products");
   revalidatePath("/orders");
   revalidatePath("/records");
   revalidatePath("/team");
   revalidatePath("/me");
-  return { error: null };
+  return { error: null, cashback: Number(payload?.cashback ?? 0) };
 }
 
 export async function applyInviteCode(code: string) {
@@ -93,7 +69,7 @@ export async function applyInviteCode(code: string) {
 /**
  * Sweeps any daily returns that are due into the wallet. Called on load and on
  * focus so a member never has to press a button to be paid, and safe to call
- * repeatedly because each plant-day has its own ledger key.
+ * repeatedly because each product-day has its own ledger key.
  */
 export async function syncPlantReturns() {
   const supabase = await createClient();

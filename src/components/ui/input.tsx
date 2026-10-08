@@ -2,7 +2,7 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 /**
- * Inputs sit on the cream page as a white panel with a green hairline.
+ * Flat field. The focus ring is the only decoration.
  */
 export function Input({ className, ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
   return (

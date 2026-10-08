@@ -19,7 +19,7 @@ const FILTERS = [
 ] as const;
 
 /**
- * Every plant activation with both notes. The member's own note is read-only;
+ * Every product activation with both notes. The member's own note is read-only;
  * the admin note is editable here and never shown to the member.
  */
 export function AdminOrders() {
@@ -67,7 +67,7 @@ export function AdminOrders() {
             type="button"
             onClick={() => setFilter(f.id)}
             className={`rounded-full px-3 py-1.5 text-xs font-semibold text-white ${
-              filter === f.id ? "bg-primary shadow-[inset_0_0_0_2px_#ffffff]" : "bg-[#14331f]"
+              filter === f.id ? "bg-primary shadow-[inset_0_0_0_2px_#ffffff]" : "bg-[#0B1F4B]"
             }`}
           >
             {f.label}

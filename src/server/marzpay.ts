@@ -242,7 +242,7 @@ export async function collectMoney(input: MarzCallInput): Promise<MarzResult> {
       phone_number: toE164(input.phone),
       reference: input.reference,
       country: COUNTRY,
-      description: input.description ?? "CoffeeUG wallet deposit",
+      description: input.description ?? "QuantumMine AI wallet deposit",
       ...(input.callbackUrl ? { callback_url: input.callbackUrl } : {}),
     }),
   });
@@ -268,7 +268,7 @@ export async function sendMoney(input: MarzCallInput): Promise<MarzResult> {
       phone_number: toE164(input.phone),
       reference: input.reference,
       country: COUNTRY,
-      description: input.description ?? "CoffeeUG withdrawal",
+      description: input.description ?? "QuantumMine AI withdrawal",
       ...(input.callbackUrl ? { callback_url: input.callbackUrl } : {}),
     }),
   });

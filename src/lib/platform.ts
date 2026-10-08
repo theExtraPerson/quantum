@@ -1,27 +1,31 @@
 import type { AppSettings } from "@/lib/types";
 
 /**
- * CoffeeUG platform rules. These mirror `public.app_settings` in the database,
- * which is the authority — these constants are the fallback the UI renders with
- * before settings load, and the defaults a fresh install starts from.
+ * QuantumMine AI platform rules. These mirror `public.app_settings` in the
+ * database, which is the authority — these constants are the fallback the UI
+ * renders with before settings load, and the defaults a fresh install starts from.
  */
 
-export const BRAND_NAME = "CoffeeUG";
-export const COMPANY_NAME = "CoffeeUG Ltd";
-export const COMPANY_SLUG = "coffeeugltd";
-export const BRAND_TAGLINE = "Grow · Export · Prosper";
+export const BRAND_NAME = "QuantumMine AI";
+export const COMPANY_NAME = "QuantumMine AI";
+export const COMPANY_SLUG = "quantummine";
+export const BRAND_TAGLINE = "Trade Smarter · Earn Bigger";
 export const FOUNDED = "October 2026";
 
-/** A plant returns 10% of its price every day for 20 days. */
+/** Fallback used when a product does not carry its own daily income or term. */
 export const DAILY_RATE_PERCENT = 10;
 export const TERM_DAYS = 20;
-/** Returns are credited at 22:00 Africa/Kampala — "10PM daily". */
-export const PAYOUT_HOUR = 22;
+/** Returns are credited at 20:00 Africa/Kampala — "8PM daily". */
+export const PAYOUT_HOUR = 20;
 
-/** Commission paid to the upline when a downline member activates a plant. */
-export const REFERRAL_RATES = [6, 1] as const;
+/** Commission paid to the upline when a downline member activates a product. */
+export const REFERRAL_RATES = [10, 1] as const;
 
-export const SIGNUP_BONUS = 500;
+/** Saturday and Sunday, Africa/Kampala. Investments strictly above this amount. */
+export const WEEKEND_CASHBACK_MIN = 100_000;
+export const WEEKEND_CASHBACK_RATE = 0.05;
+
+export const SIGNUP_BONUS = 1000;
 export const MIN_DEPOSIT = 5000;
 export const MAX_DEPOSIT = 10_000_000;
 export const MIN_WITHDRAW = 3000;
@@ -29,27 +33,21 @@ export const MAX_WITHDRAW = 5_000_000;
 export const WITHDRAW_FEE_RATE = 0.15;
 
 export const TELEGRAM_CHANNEL_URL = "https://t.me/+x70pBloGZDNmYjg0";
-export const TELEGRAM_SUPPORT_URL = "https://t.me/coffeeug";
-export const SUPPORT_HANDLE = "@coffeeug";
+export const TELEGRAM_SUPPORT_URL = "https://t.me/+x70pBloGZDNmYjg0";
+export const SUPPORT_HANDLE = "QuantumMine AI";
 
-export const BRAND_LOGO_PATH = "/brand/logo.jpg";
-export const HOW_TO_EARN_PATH = "/brand/how-to-earn.jpg";
-export const WAYS_OF_EARNING_IMAGE = "/brand/ways-of-earning.jpg";
-export const INVITE_IMAGE = "/brand/invite-image.jpg";
-export const INVEST_IN_COFFEE_IMAGE = "/brand/invest-in-coffee.jpg";
-export const PROCESSING_PLANT_IMAGE = "/plants/processing-plant.jpg";
-export const PROCESSING_PLANT_NAME = "Coffee Processing Plant";
+export const PRODUCTS_IMAGE = "/brand/products_image.jpg";
 
 export const ABOUT_PARAGRAPHS = [
-  "CoffeeUG is a Uganda-focused coffee business built around the opportunities within the coffee industry. We aim to connect people with coffee-related business opportunities while promoting Uganda's coffee sector and its potential.",
-  "Our focus is on creating a trusted community, sharing information about new opportunities, and supporting people who want to participate in the coffee business.",
+  "QuantumMine AI is presented as an AI-powered trading platform that uses automated trading robots to analyze market information and identify potential trading opportunities.",
+  "Our trading robots are designed to use algorithmic analysis, market trends, and sentiment signals to support automated trading decisions. The goal is to make trading more systematic and reduce the need for users to monitor markets manually.",
 ];
 
 export const ABOUT_VISION =
-  "To contribute to a stronger and more inclusive coffee business community in Uganda.";
+  "To make trading more systematic and reduce the need for users to monitor markets manually.";
 export const ABOUT_MISSION =
-  "To create opportunities, build connections, and grow together through coffee.";
-export const ABOUT_STRAPLINE = "CoffeeUG — Growing opportunities through coffee.";
+  "To use algorithmic analysis, market trends, and sentiment signals in support of automated trading decisions.";
+export const ABOUT_STRAPLINE = "QuantumMine AI — Trade smarter with automated analysis.";
 
 function resolveSiteUrl() {
   const explicit = (process.env.NEXT_PUBLIC_SITE_URL || "").trim().replace(/\/$/, "");
@@ -58,14 +56,16 @@ function resolveSiteUrl() {
     .trim()
     .replace(/\/$/, "");
   if (vercel) return vercel.startsWith("http") ? vercel : `https://${vercel}`;
-  return "https://coffeeug.vercel.app/";
+  return "https://quantummine.ai";
 }
 
 export const SITE_URL = resolveSiteUrl();
 
-export const DEFAULT_WELCOME_MESSAGE = `Welcome to CoffeeUG!
+export const DEFAULT_WELCOME_MESSAGE = `Welcome to QuantumMine AI!
 
-Deposit to your wallet, activate a processing plant, and your returns arrive at 10PM every day for 20 days.
+Deposit to your wallet, activate a trading product, and your returns arrive at 8PM every day for that product's term.
+
+On weekends, each investment above UGX 100,000 receives 5% cashback.
 
 Tap Channel for updates and Support if you need help.`;
 
@@ -162,7 +162,22 @@ export function formatWithdrawWindow(start: string, end: string) {
   return `${normalizeTime(start)} – ${normalizeTime(end)} (Africa/Kampala)`;
 }
 
-/** "10PM" from payout hour 22, for copy that must match the marketing. */
+/** Kampala weekend: Saturday or Sunday. */
+export function isKampalaWeekend(date = new Date()) {
+  const weekday = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Africa/Kampala",
+    weekday: "short",
+  }).format(date);
+  return weekday === "Sat" || weekday === "Sun";
+}
+
+/** 5% of the price on a weekend, and only when the price is above UGX 100,000. */
+export function weekendCashback(price: number, date = new Date()) {
+  if (price <= WEEKEND_CASHBACK_MIN || !isKampalaWeekend(date)) return 0;
+  return Math.round(price * WEEKEND_CASHBACK_RATE);
+}
+
+/** "8PM" from payout hour 20, for copy that must match the marketing. */
 export function payoutClockLabel(hour = PAYOUT_HOUR) {
   const h = ((hour % 24) + 24) % 24;
   const suffix = h < 12 ? "AM" : "PM";

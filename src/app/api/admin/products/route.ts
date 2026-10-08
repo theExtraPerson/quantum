@@ -14,7 +14,7 @@ export async function GET() {
   return NextResponse.json({ products: data ?? [] });
 }
 
-/** Create a plant. Daily return defaults to the platform rate on the price. */
+/** Create a trading product. Daily return defaults to the platform rate on the price. */
 export async function POST(request: Request) {
   const { admin, error } = await requireAdmin();
   if (error || !admin) return jsonError(error ?? "Forbidden", error === "Unauthorized" ? 401 : 403);
@@ -43,7 +43,7 @@ export async function POST(request: Request) {
       price,
       days,
       daily_income: dailyIncome,
-      category: body.category === "bonus" ? "bonus" : "plant",
+      category: body.category === "bonus" ? "bonus" : "product",
       image_url: (body.image_url as string) || null,
       sort_order: Number(body.sort_order ?? 99),
       active: body.active !== false,
@@ -55,13 +55,13 @@ export async function POST(request: Request) {
   return NextResponse.json({ product: data });
 }
 
-/** Update a plant, optionally pushing the change onto running activations. */
+/** Update a product, optionally pushing the change onto running activations. */
 export async function PATCH(request: Request) {
   const { admin, error } = await requireAdmin();
   if (error || !admin) return jsonError(error ?? "Forbidden", error === "Unauthorized" ? 401 : 403);
 
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
-  if (!body.id) return jsonError("Missing plant");
+  if (!body.id) return jsonError("Missing product");
 
   const { data, error: rpcError } = await admin.rpc("admin_update_product", {
     _product_id: body.id,

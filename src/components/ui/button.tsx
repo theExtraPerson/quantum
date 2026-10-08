@@ -7,9 +7,8 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        // Forest green is the action. Yellow is the highlight, used sparingly.
         default: "bg-primary text-primary-foreground",
-        accent: "bg-gold text-[#14331F]",
+        accent: "bg-gold text-[#0B1F4B]",
         // Quiet buttons are a hairline of border over the page, never a fill.
         secondary:
           "text-secondary-foreground shadow-[inset_0_0_0_1px_var(--input)] hover:text-foreground",

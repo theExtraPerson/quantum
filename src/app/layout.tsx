@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Fira_Sans } from "next/font/google";
 import { Providers } from "@/components/providers";
-import { BRAND_NAME, BRAND_TAGLINE, COMPANY_NAME, SITE_URL } from "@/lib/platform";
+import { BRAND_NAME, BRAND_TAGLINE, COMPANY_NAME, SITE_URL, payoutClockLabel } from "@/lib/platform";
 import "./globals.css";
 
 const fira = Fira_Sans({
@@ -12,7 +12,7 @@ const fira = Fira_Sans({
 
 const title = `${BRAND_NAME} | ${BRAND_TAGLINE}`;
 const description =
-  "Activate a coffee processing plant with CoffeeUG and collect your returns at 10PM every day for 20 days.";
+  `Activate a QuantumMine AI trading product and collect its daily income at ${payoutClockLabel()}.`;
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -24,9 +24,8 @@ export const metadata: Metadata = {
   // The logo doubles as the favicon and the app icon, so the mark appears on
   // the site, the installed app, and every shared link.
   icons: {
-    icon: [{ url: "/brand/logo.jpg", type: "image/jpeg" }],
-    apple: [{ url: "/brand/logo.jpg", type: "image/jpeg" }],
-    shortcut: ["/brand/logo.jpg"],
+    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
+    shortcut: ["/icon.svg"],
   },
   openGraph: {
     title,
@@ -40,15 +39,20 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#146C34",
+  themeColor: "#1558C0",
   width: "device-width",
   initialScale: 1,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={`${fira.variable} font-sans antialiased`}>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var t=localStorage.getItem("quantummine_theme");if(t!=="light"&&t!=="dark")t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.dataset.theme=t;document.documentElement.style.colorScheme=t;}catch(e){}`,
+          }}
+        />
         <Providers>{children}</Providers>
       </body>
     </html>

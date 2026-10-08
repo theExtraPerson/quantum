@@ -1,7 +1,6 @@
 @import "tailwindcss";
 
-/* Palette taken from the ways-of-earning poster: cream and white surfaces,
-   forest green for action and text, yellow reserved for highlights. */
+/* Flat white cards on a cool field. Blue does the work. Yellow is one accent. */
 
 @theme inline {
   --radius: 1rem;
@@ -19,58 +18,79 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
-  --color-bean: var(--bean);
-  --color-leaf: var(--leaf);
-  --color-cherry: var(--cherry);
   --color-gold: var(--gold);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
   --color-warning: var(--warning);
-  --color-cream: var(--cream);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --shadow-soft: 0 10px 28px rgb(20 51 31 / 0.08);
-  --shadow-lift: 0 16px 36px rgb(20 51 31 / 0.12);
-  --shadow-glow: 0 8px 22px rgb(20 108 52 / 0.22);
+  --shadow-soft: 0 8px 24px rgb(11 31 75 / 0.06);
+  --shadow-lift: 0 18px 40px rgb(11 31 75 / 0.1);
+  --shadow-glow: none;
 }
 
 :root {
   color-scheme: light;
 
-  --background: #f6f3e8;
-  --foreground: #14331f;
-  --card: #fffcf6;
-  --card-foreground: #14331f;
-  /* Forest green is the action and the money colour. */
-  --primary: #146c34;
+  --background: #eef1f6;
+  --foreground: #0b1f4b;
+  --card: #ffffff;
+  --card-foreground: #0b1f4b;
+  /* Blue is the action and the money colour. */
+  --primary: #1558c0;
   --primary-foreground: #ffffff;
-  --secondary: #e7f2e6;
-  --secondary-foreground: #1b4332;
-  --muted: #eef3ea;
-  --muted-foreground: #4d6b58;
-  /* Green for text and icons, so links stay readable on cream. */
-  --accent: #146c34;
+  --secondary: #e7eef8;
+  --secondary-foreground: #0b1f4b;
+  --muted: #eef3f9;
+  --muted-foreground: #4a6288;
+  --accent: #1558c0;
   --accent-foreground: #ffffff;
-  --bean: #6b4423;
-  --leaf: #1f8a45;
-  --cherry: #c2412d;
-  --gold: #e4c200;
+  --gold: #f5c400;
   --destructive: #c2412d;
   --destructive-foreground: #ffffff;
-  --success: #146c34;
+  --success: #1558c0;
   --success-foreground: #ffffff;
   --warning: #8a6a00;
-  --cream: #fff8e7;
-  --border: #d5e3d2;
-  --input: #c5d7c4;
-  --ring: #146c34;
+  --border: #d5e2f2;
+  --input: #c5d4ea;
+  --ring: #1558c0;
 
-  --surface-gradient: linear-gradient(#fffcf6, #f7f4ea);
-  --input-gradient: linear-gradient(#ffffff, #f4f7f0);
-  --cta-gradient: linear-gradient(#1f8a45, #146c34);
+  --surface-gradient: none;
+  --input-gradient: none;
+  --cta-gradient: none;
+  --chrome: #282f36;
+  --chrome-foreground: #aab8c5;
+  --chrome-active: #303943;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --background: #151c24;
+  --foreground: #e7eef6;
+  --card: #1e2833;
+  --card-foreground: #e7eef6;
+  --primary: #2f74e0;
+  --primary-foreground: #ffffff;
+  --secondary: #243140;
+  --secondary-foreground: #e7eef6;
+  --muted: #243140;
+  --muted-foreground: #8ea0b5;
+  --accent: #7eb0ff;
+  --accent-foreground: #ffffff;
+  --gold: #f5c400;
+  --success: #2f74e0;
+  --success-foreground: #ffffff;
+  --warning: #f5c400;
+  --border: #2c3a4a;
+  --input: #3a4d62;
+  --ring: #2f74e0;
+  --chrome: #12181f;
+  --chrome-foreground: #aab8c5;
+  --chrome-active: #243140;
 }
 
 * {
@@ -81,17 +101,17 @@ html,
 body {
   min-height: 100%;
   color: var(--foreground);
+  background-color: var(--background);
   font-family: var(--font-sans);
   -webkit-tap-highlight-color: transparent;
 }
 
-/* A warm cream field with a soft green wash and a hint of the poster yellow. */
 body {
-  background-color: #f6f3e8;
+  background-color: var(--background);
   background-image:
-    radial-gradient(90% 42% at 100% -8%, rgb(228 194 0 / 0.2) 0%, transparent 58%),
-    radial-gradient(80% 40% at -12% 8%, rgb(20 108 52 / 0.1) 0%, transparent 55%),
-    linear-gradient(#fbf8f0 0%, #f6f3e8 48%, #eef5ea 100%);
+    linear-gradient(rgb(21 88 192 / 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(21 88 192 / 0.05) 1px, transparent 1px);
+  background-size: 28px 28px;
   background-attachment: scroll;
   background-repeat: no-repeat;
 }
@@ -107,32 +127,25 @@ body {
   letter-spacing: -0.015em;
 }
 
-/* Forest-green call to action, with a light edge so it sits on the cream page. */
 .brand-gradient {
-  background-image: var(--cta-gradient);
-  box-shadow:
-    var(--shadow-glow),
-    inset 0 1px 0 0 rgb(255 255 255 / 0.35);
+  background-color: var(--primary);
 }
 
 .app-card {
-  background-image: var(--surface-gradient);
-  border-radius: 16px;
-  box-shadow:
-    var(--shadow-soft),
-    inset 0 0 0 1px var(--border);
+  background-color: var(--card);
+  color: var(--card-foreground);
+  border-radius: 18px;
+  box-shadow: var(--shadow-soft);
 }
 
 .app-panel {
-  background-image: var(--input-gradient);
-  border-radius: 13px;
-  box-shadow: inset 0 0 0 1px var(--border);
+  background-color: var(--muted);
+  border-radius: 12px;
 }
 
 .stat-tile {
-  border-radius: 13px;
-  background-image: var(--input-gradient);
-  box-shadow: inset 0 0 0 1px var(--border);
+  border-radius: 12px;
+  background-color: var(--muted);
   padding: 0.7rem 0.55rem;
 }
 
@@ -156,18 +169,18 @@ body {
 }
 
 .chip-good {
-  background: rgb(20 108 52 / 0.12);
-  color: #146c34;
+  background: rgb(21 88 192 / 0.12);
+  color: #1558c0;
 }
 
 .chip-wait {
-  background: rgb(228 194 0 / 0.28);
+  background: rgb(245 196 0 / 0.35);
   color: #6b5600;
 }
 
 .chip-live {
-  background: rgb(20 108 52 / 0.12);
-  color: #146c34;
+  background: rgb(21 88 192 / 0.12);
+  color: #1558c0;
 }
 
 .chip-bad {
@@ -176,13 +189,13 @@ body {
 }
 
 .chip-off {
-  background: rgb(77 107 88 / 0.12);
-  color: #4d6b58;
+  background: rgb(74 98 136 / 0.12);
+  color: #4a6288;
 }
 
 .chip-accent {
-  background: #e4c200;
-  color: #14331f;
+  background: #f5c400;
+  color: #0b1f4b;
 }
 
 /* Inline alert, used for a gateway failure reason. */
@@ -194,7 +207,7 @@ body {
 }
 
 /* Horizontal marquee for the payout ticker on the home screen. */
-@keyframes coffee-marquee {
+@keyframes brand-marquee {
   from {
     transform: translateX(0);
   }
@@ -206,7 +219,7 @@ body {
 .marquee-track {
   display: inline-flex;
   min-width: 200%;
-  animation: coffee-marquee 28s linear infinite;
+  animation: brand-marquee 28s linear infinite;
 }
 
 .brand-carousel {
@@ -217,7 +230,7 @@ body {
 .brand-carousel-track {
   display: flex;
   width: max-content;
-  animation: coffee-marquee 32s linear infinite;
+  animation: brand-marquee 32s linear infinite;
 }
 
 .brand-carousel-slide {

@@ -1,32 +1,26 @@
 {
-  "name": "CoffeeUG — Grow, Export, Prosper",
-  "short_name": "CoffeeUG",
-  "description": "Activate a coffee processing plant and collect your returns every day with CoffeeUG.",
+  "name": "QuantumMine AI — Trade Smarter, Earn Bigger",
+  "short_name": "QuantumMine AI",
+  "description": "Activate a QuantumMine AI trading product and collect its daily income every day.",
   "id": "/",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#F6F3E8",
-  "theme_color": "#146C34",
+  "background_color": "#EEF1F6",
+  "theme_color": "#1558C0",
   "lang": "en-UG",
   "categories": ["finance", "business"],
   "icons": [
     {
-      "src": "/brand/logo.jpg",
-      "sizes": "1024x1024",
-      "type": "image/jpeg",
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
       "purpose": "any"
-    },
-    {
-      "src": "/brand/logo.jpg",
-      "sizes": "1024x1024",
-      "type": "image/jpeg",
-      "purpose": "maskable"
     }
   ],
   "shortcuts": [
-    { "name": "Plants", "url": "/plants" },
+    { "name": "Products", "url": "/products" },
     { "name": "Deposit", "url": "/deposit" },
     { "name": "Withdraw", "url": "/withdraw" },
     { "name": "Team", "url": "/team" }

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -9,7 +8,7 @@ import { Share2 } from "@/components/icons";
 import { useSessionUser, useTeamStats } from "@/hooks/use-app-data";
 import { formatKampalaDate } from "@/lib/date";
 import { formatMoney } from "@/lib/money";
-import { INVEST_IN_COFFEE_IMAGE, REFERRAL_RATES } from "@/lib/platform";
+import { REFERRAL_RATES } from "@/lib/platform";
 
 export default function TeamPage() {
   const { user, loading: sessionLoading } = useSessionUser();
@@ -42,7 +41,7 @@ export default function TeamPage() {
         </div>
         <p className="px-1 text-xs text-muted-foreground">
           Level 1 pays {REFERRAL_RATES[0]}% and level 2 pays {REFERRAL_RATES[1]}% of a successful
-          plant investment. A signup or a deposit alone does not pay commission.
+          product purchase. A signup or a deposit alone does not pay commission.
         </p>
 
         <div className="flex gap-2">
@@ -59,7 +58,7 @@ export default function TeamPage() {
                     : "app-panel text-muted-foreground"
                 }`}
               >
-                Level {n} · {info?.rate ?? (n === 1 ? 6 : 1)}%
+                Level {n} · {info?.rate ?? REFERRAL_RATES[n - 1]}%
                 <span className="mt-0.5 block text-[10px] font-semibold opacity-80">
                   {info?.members ?? 0} members
                 </span>
@@ -134,17 +133,6 @@ export default function TeamPage() {
               </Link>
             </div>
           ) : null}
-        </div>
-
-        <div className="app-card overflow-hidden">
-          <Image
-            src={INVEST_IN_COFFEE_IMAGE}
-            alt="Invest in coffee and live a fruitful life"
-            width={683}
-            height={1024}
-            sizes="(max-width: 640px) 100vw, 560px"
-            className="h-auto w-full"
-          />
         </div>
       </div>
     </AppShell>

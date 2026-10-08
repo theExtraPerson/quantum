@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff } from "@/components/icons";
-import { AuthHero } from "@/components/auth-hero";
+import { AuthFrame } from "@/components/auth-hero";
 import { createClient, supabaseConfigured } from "@/lib/supabase/client";
 import { captureInviteFromSearch, readRememberedInvite, rememberInvite } from "@/lib/invite";
 import { normalizeUsername, usernameToEmail } from "@/lib/username";
@@ -78,17 +78,19 @@ function LoginForm() {
   }
 
   return (
-    <div className="min-h-screen">
-      <div className="mx-auto max-w-[560px]">
-        <AuthHero />
-
-        <div className="app-card mx-4 mb-16 px-6 pb-8 pt-7">
-          <h1 className="text-2xl font-semibold">Welcome back</h1>
-          <p className="mt-1 text-[13px] text-muted-foreground">
-            Sign in with the username you registered.
-          </p>
-
-          <form onSubmit={onSubmit} className="mt-6 space-y-4">
+    <AuthFrame
+      title="Welcome back"
+      subtitle="Sign in with the username you registered."
+      footer={
+        <>
+          Don&apos;t have an account?{" "}
+          <Link href={invite ? `/register?ref=${invite}` : "/register"} className="font-semibold text-primary">
+            Sign up
+          </Link>
+        </>
+      }
+    >
+          <form onSubmit={onSubmit} className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="username">Username</Label>
               <Input
@@ -111,7 +113,7 @@ function LoginForm() {
                   autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
+                  placeholder="Enter your password"
                   maxLength={64}
                   className="pr-11"
                 />
@@ -127,18 +129,9 @@ function LoginForm() {
             </div>
 
             <Button type="submit" size="lg" className="h-12 w-full text-base" disabled={busy}>
-              {busy ? "Please wait…" : "Log In"}
+              {busy ? "Please wait…" : "Sign in"}
             </Button>
           </form>
-
-          <Link
-            href={invite ? `/register?ref=${invite}` : "/register"}
-            className="mt-6 block text-center text-sm font-semibold text-accent"
-          >
-            Create an account
-          </Link>
-        </div>
-      </div>
-    </div>
+    </AuthFrame>
   );
 }

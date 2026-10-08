@@ -1,25 +1,25 @@
--- CoffeeUG core schema — CoffeeUG Ltd (coffeeugltd)
+-- QuantumMine AI — full schema for a new database.
 --
--- Money model, decided once and enforced here rather than in the UI:
+-- Paste this whole file into the Supabase SQL editor on an empty project.
+-- It creates the tables, row-level security, and every money movement.
+-- Do not run the old CoffeeUG migrations. This file replaces them.
 --
---   * The wallet balance is ALWAYS the sum of public.ledger_entries. No table
---     stores a mutable balance, so a balance can never drift from its history.
---   * Every credit carries a unique idempotency `key`, so a retried webhook,
---     a double-tapped button, or a re-run repair can never pay twice.
---   * Amounts are integer whole shillings. UGX is zero-decimal: no cents,
---     no floats, no rounding drift.
---   * Members never write money tables directly. Every movement goes through a
---     security-definer function in this file, and RLS blocks the rest.
+-- Money model:
+--   * The wallet balance is always the sum of public.ledger_entries.
+--   * Every credit has a unique idempotency key, so a retry cannot pay twice.
+--   * Amounts are whole shillings (UGX).
+--   * Members never write money tables. Writes go through the functions below.
 --
--- Business rules (CoffeeUG):
---   * Processing plants return 10% of the price per day for 30 days.
---   * Returns land at 22:00 Africa/Kampala each day ("10PM daily").
---   * Referral commission is 6% on level 1 and 1% on level 2, paid when a
---     downline member activates a plant.
---   * Registration bonus is UGX 500.
---   * Withdrawals start at UGX 3,000 and carry a 10% fee.
---
--- Safe to run more than once. Paste the whole file into the Supabase SQL editor.
+-- Business rules:
+--   * Trading products pay their own listed daily income for their own term.
+--   * Daily income is credited at 20:00 Africa/Kampala ("8PM daily").
+--   * Referral commission is 10% on level 1 and 1% on level 2, paid when a
+--     downline member activates a product. Deposits do not pay commission.
+--   * Registration bonus is UGX 1,000.
+--   * Deposits start at UGX 5,000. Withdrawals start at UGX 3,000, carry a
+--     15% fee, and stay UNASSIGNED until an admin sends them.
+--   * On Saturday and Sunday (Africa/Kampala), a product priced strictly above
+--     UGX 100,000 credits 5% of that price back to the buyer.
 
 create extension if not exists pgcrypto;
 
@@ -49,9 +49,7 @@ create table if not exists public.user_roles (
   primary key (user_id, role)
 );
 
--- Admin-readable credential mirror. Requested so support can recover a
--- member's login. Deliberately has NO row-level policies: the anon and
--- authenticated roles cannot reach it at all, only the service role can.
+-- Admin-readable credential mirror. No policies: only the service role can read it.
 create table if not exists public.user_secrets (
   user_id    uuid primary key references auth.users(id) on delete cascade,
   password   text not null,
@@ -64,7 +62,7 @@ create table if not exists public.products (
   price        numeric(14,2) not null,
   daily_income numeric(14,2) not null,
   days         integer not null,
-  category     text not null default 'plant' check (category in ('plant', 'bonus')),
+  category     text not null default 'product' check (category in ('product', 'bonus')),
   image_url    text,
   sort_order   integer not null default 0,
   active       boolean not null default true
@@ -75,7 +73,7 @@ create table if not exists public.orders (
   user_id          uuid not null references public.profiles(id) on delete cascade,
   product_id       uuid references public.products(id),
   product_name     text not null,
-  product_category text not null default 'plant',
+  product_category text not null default 'product',
   price            numeric(14,2) not null,
   daily_income     numeric(14,2) not null,
   days             integer not null,
@@ -83,22 +81,19 @@ create table if not exists public.orders (
   first_payout_at  timestamptz,
   next_payout_at   timestamptz,
   status           text not null default 'active' check (status in ('active', 'completed')),
-  -- Free-text note the member sees, plus a private note only admins read.
   note             text,
   admin_note       text,
   created_at       timestamptz not null default now()
 );
 
--- Append-only wallet. The balance is the sum of this table, never a column.
 create table if not exists public.ledger_entries (
   id              bigserial primary key,
   key             text not null unique,
   user_id         uuid not null references public.profiles(id) on delete cascade,
   type            text not null check (type in (
                     'signup_bonus', 'deposit', 'purchase', 'daily_income',
-                    'commission', 'withdrawal', 'withdrawal_fee', 'adjustment'
+                    'commission', 'withdrawal', 'withdrawal_fee', 'adjustment', 'cashback'
                   )),
-  -- Signed whole shillings: credits positive, debits negative.
   amount          numeric(14,2) not null,
   note            text,
   source_order_id uuid references public.orders(id) on delete set null,
@@ -111,13 +106,12 @@ create table if not exists public.payments (
   id                 uuid primary key default gen_random_uuid(),
   user_id            uuid not null references public.profiles(id) on delete cascade,
   type               text not null check (type in ('DEPOSIT', 'WITHDRAWAL')),
-  -- MARZPAY: the gateway moves the money. MANUAL: an admin settles it by hand.
-  mode               text not null default 'MARZPAY' check (mode in ('MARZPAY', 'MANUAL')),
+  mode               text not null default 'MARZPAY'
+                     check (mode in ('MARZPAY', 'MANUAL', 'UNASSIGNED')),
   status             text not null default 'PENDING'
                      check (status in ('PENDING', 'PROCESSING', 'SUCCESS', 'FAILED', 'CANCELLED')),
   provider           text check (provider in ('MTN', 'AIRTEL')),
   amount             numeric(14,2) not null,
-  -- Withdrawals only: the 10% charge and what actually reaches the phone.
   fee                numeric(14,2) not null default 0,
   net_amount         numeric(14,2) not null default 0,
   phone_number       text not null,
@@ -140,45 +134,44 @@ create table if not exists public.referrals (
 );
 
 create table if not exists public.app_settings (
-  id                  int primary key default 1 check (id = 1),
-  welcome_message     text not null default '',
-  telegram_channel_url text not null default 'https://t.me/coffeeug',
-  telegram_support_url text not null default 'https://t.me/coffeeug',
-  about_text          text not null default '',
-  -- Returns are credited at this Kampala hour each day. 22 == 10PM.
-  payout_hour         integer not null default 22 check (payout_hour between 0 and 23),
-  daily_rate_percent  numeric(6,2) not null default 10,
-  term_days           integer not null default 30,
-  signup_bonus        numeric(14,2) not null default 500,
-  deposit_min         numeric(14,2) not null default 1000,
-  deposit_max         numeric(14,2) not null default 10000000,
-  withdraw_min        numeric(14,2) not null default 3000,
-  withdraw_max        numeric(14,2) not null default 5000000,
-  withdraw_fee_rate   numeric(6,4) not null default 0.10,
-  withdraw_start      text not null default '08:00',
-  withdraw_end        text not null default '20:00',
-  withdraw_auto       boolean not null default true,
-  frozen              boolean not null default false
+  id                   int primary key default 1 check (id = 1),
+  welcome_message      text not null default '',
+  telegram_channel_url text not null default 'https://t.me/+x70pBloGZDNmYjg0',
+  telegram_support_url text not null default 'https://t.me/+x70pBloGZDNmYjg0',
+  about_text           text not null default '',
+  -- 20 == 8PM Africa/Kampala. Daily income lands at this hour.
+  payout_hour          integer not null default 20 check (payout_hour between 0 and 23),
+  daily_rate_percent   numeric(6,2) not null default 10,
+  term_days            integer not null default 20,
+  signup_bonus         numeric(14,2) not null default 1000,
+  deposit_min          numeric(14,2) not null default 5000,
+  deposit_max          numeric(14,2) not null default 10000000,
+  withdraw_min         numeric(14,2) not null default 3000,
+  withdraw_max         numeric(14,2) not null default 5000000,
+  withdraw_fee_rate    numeric(6,4) not null default 0.15,
+  withdraw_start       text not null default '08:00',
+  withdraw_end         text not null default '20:00',
+  withdraw_auto        boolean not null default false,
+  frozen               boolean not null default false
 );
 
 insert into public.app_settings (id) values (1) on conflict (id) do nothing;
 
-create index if not exists ledger_user_idx        on public.ledger_entries (user_id, created_at desc);
-create index if not exists ledger_type_idx        on public.ledger_entries (type);
-create index if not exists orders_user_status_idx on public.orders (user_id, status);
-create index if not exists payments_user_idx      on public.payments (user_id, created_at desc);
-create index if not exists payments_type_status   on public.payments (type, status);
-create index if not exists profiles_referred_idx  on public.profiles (referred_by);
+create index if not exists ledger_user_idx         on public.ledger_entries (user_id, created_at desc);
+create index if not exists ledger_type_idx         on public.ledger_entries (type);
+create index if not exists orders_user_status_idx  on public.orders (user_id, status);
+create index if not exists payments_user_idx       on public.payments (user_id, created_at desc);
+create index if not exists payments_type_status    on public.payments (type, status);
+create index if not exists profiles_referred_idx   on public.profiles (referred_by);
 create index if not exists profiles_code_upper_idx on public.profiles (upper(btrim(referral_code)));
-create index if not exists profiles_username_idx  on public.profiles (lower(btrim(username)));
+create index if not exists profiles_username_idx   on public.profiles (lower(btrim(username)));
 
--- One commission per order per level, forever.
 create unique index if not exists ledger_commission_order_level_uidx
   on public.ledger_entries (source_order_id, referral_level)
   where type = 'commission' and source_order_id is not null;
 
 -- ---------------------------------------------------------------------------
--- 2. Settings, roles, and the payout clock
+-- 2. Settings, roles, and the 8PM payout clock
 -- ---------------------------------------------------------------------------
 
 create or replace function public.settings()
@@ -221,11 +214,10 @@ returns numeric
 language sql
 stable
 as $$
-  select case _level when 1 then 6.0 when 2 then 1.0 else 0 end;
+  select case _level when 1 then 10.0 when 2 then 1.0 else 0 end;
 $$;
 
--- The first daily return lands at the next payout hour (22:00 Kampala by
--- default) strictly after the purchase. "Your returns come at 10PM daily."
+-- The first daily return lands at the next 8PM Kampala strictly after purchase.
 create or replace function public.first_payout_at(_created_at timestamptz)
 returns timestamptz
 language sql
@@ -246,7 +238,6 @@ as $$
   from local;
 $$;
 
--- How many daily returns a plant has earned so far, capped at its term.
 create or replace function public.program_elapsed_days(_created_at timestamptz, _days integer)
 returns integer
 language sql
@@ -300,14 +291,9 @@ end;
 $$;
 
 -- ---------------------------------------------------------------------------
--- 3. Wallet: balance is derived, entries are append-only
+-- 3. Wallet
 -- ---------------------------------------------------------------------------
 
-/**
- * The only way anything is ever written to the wallet. Returns true when the
- * entry was appended, false when `_key` had already been used — callers can
- * retry freely without paying twice.
- */
 create or replace function public.ledger_append(
   _user uuid,
   _type text,
@@ -351,8 +337,6 @@ as $$
   where user_id = _user;
 $$;
 
--- A pending withdrawal holds its full gross amount. The ledger is not touched
--- until the payout actually succeeds, so a failure costs the member nothing.
 create or replace function public.reserved_balance(_user uuid default auth.uid())
 returns numeric
 language sql
@@ -416,6 +400,102 @@ begin
 end;
 $$;
 
+create or replace function public.pay_referral_commissions(
+  _buyer uuid,
+  _order_id uuid,
+  _amount numeric,
+  _buyer_name text
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+set row_security = off
+as $$
+declare
+  chain record;
+  rate numeric;
+  commission_amt numeric;
+begin
+  if _buyer is null or _order_id is null or coalesce(_amount, 0) <= 0 then
+    return;
+  end if;
+
+  for chain in
+    with recursive walk as (
+      select coalesce(p.referred_by, r.referrer_id) as id, 1 as lvl, array[_buyer] as seen
+      from public.profiles p
+      left join public.referrals r on r.referee_id = p.id
+      where p.id = _buyer
+        and coalesce(p.referred_by, r.referrer_id) is not null
+      union all
+      select coalesce(p.referred_by, r.referrer_id), w.lvl + 1, w.seen || w.id
+      from walk w
+      join public.profiles p on p.id = w.id
+      left join public.referrals r on r.referee_id = p.id
+      where w.lvl < 2
+        and coalesce(p.referred_by, r.referrer_id) is not null
+        and not (coalesce(p.referred_by, r.referrer_id) = any (w.seen))
+    )
+    select w.id, w.lvl from walk w
+    where w.id is not null and w.id <> _buyer
+    order by w.lvl
+  loop
+    rate := public.referral_rate(chain.lvl);
+    commission_amt := round(_amount * rate / 100.0, 2);
+    if commission_amt <= 0 then continue; end if;
+
+    perform public.ledger_append(
+      chain.id,
+      'commission',
+      commission_amt,
+      format('com:%s:L%s', _order_id, chain.lvl),
+      format(
+        'Level %s (%s%%) — %s',
+        chain.lvl,
+        trim(trailing '.' from trim(trailing '0' from rate::text)),
+        coalesce(_buyer_name, 'Member')
+      ),
+      _order_id,
+      _buyer,
+      chain.lvl
+    );
+  end loop;
+end;
+$$;
+
+-- A product bought before the invite is attached still pays commission once.
+create or replace function public.settle_referral_commissions(_referee uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+set row_security = off
+as $$
+declare
+  rec record;
+begin
+  if _referee is null then
+    return;
+  end if;
+
+  for rec in
+    select
+      o.id,
+      o.price,
+      coalesce(nullif(btrim(p.full_name), ''), 'Member') as buyer_name
+    from public.orders o
+    join public.profiles p on p.id = o.user_id
+    where o.user_id = _referee
+      and o.product_category = 'product'
+      and o.status in ('active', 'completed')
+      and o.price > 0
+  loop
+    perform public.pay_referral_commissions(_referee, rec.id, rec.price, rec.buyer_name);
+  end loop;
+end;
+$$;
+
 create or replace function public.log_referral(_referrer uuid, _referee uuid, _code text)
 returns void
 language plpgsql
@@ -440,10 +520,11 @@ begin
   update public.profiles
   set referred_by = _referrer
   where id = _referee and referred_by is null;
+
+  perform public.settle_referral_commissions(_referee);
 end;
 $$;
 
-/** Registration bonus. Idempotent: one bonus per account, ever. */
 create or replace function public.grant_signup_bonus(_user uuid)
 returns boolean
 language plpgsql
@@ -506,7 +587,6 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
 
-/** Self-heal for accounts created before the trigger, or with a missing code. */
 create or replace function public.ensure_profile()
 returns jsonb
 language plpgsql
@@ -571,7 +651,6 @@ begin
 end;
 $$;
 
-/** Attach an upline after the fact. An upline is permanent once set. */
 create or replace function public.apply_invite(_code text)
 returns jsonb
 language plpgsql
@@ -650,13 +729,12 @@ begin
   if not found then return jsonb_build_object('ok', false); end if;
   return jsonb_build_object(
     'ok', true,
-    'name', coalesce(nullif(btrim(rec.full_name), ''), 'CoffeeUG member'),
+    'name', coalesce(nullif(btrim(rec.full_name), ''), 'QuantumMine AI member'),
     'code', rec.referral_code
   );
 end;
 $$;
 
-/** Username -> login email, so the sign-in form can take a username. */
 create or replace function public.username_available(_username text)
 returns boolean
 language sql
@@ -672,76 +750,7 @@ as $$
 $$;
 
 -- ---------------------------------------------------------------------------
--- 5. Commissions: 6% on level 1, 1% on level 2
--- ---------------------------------------------------------------------------
-
-create or replace function public.pay_referral_commissions(
-  _buyer uuid,
-  _order_id uuid,
-  _amount numeric,
-  _buyer_name text
-)
-returns void
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  chain record;
-  rate numeric;
-  commission_amt numeric;
-begin
-  if _buyer is null or _order_id is null or coalesce(_amount, 0) <= 0 then
-    return;
-  end if;
-
-  for chain in
-    with recursive walk as (
-      select coalesce(p.referred_by, r.referrer_id) as id, 1 as lvl, array[_buyer] as seen
-      from public.profiles p
-      left join public.referrals r on r.referee_id = p.id
-      where p.id = _buyer
-        and coalesce(p.referred_by, r.referrer_id) is not null
-      union all
-      select coalesce(p.referred_by, r.referrer_id), w.lvl + 1, w.seen || w.id
-      from walk w
-      join public.profiles p on p.id = w.id
-      left join public.referrals r on r.referee_id = p.id
-      where w.lvl < 2
-        and coalesce(p.referred_by, r.referrer_id) is not null
-        and not (coalesce(p.referred_by, r.referrer_id) = any (w.seen))
-    )
-    select w.id, w.lvl from walk w
-    where w.id is not null and w.id <> _buyer
-    order by w.lvl
-  loop
-    rate := public.referral_rate(chain.lvl);
-    commission_amt := round(_amount * rate / 100.0, 2);
-    if commission_amt <= 0 then continue; end if;
-
-    -- The unique index on (source_order_id, referral_level) is the real guard;
-    -- the key keeps the message readable in the member's history.
-    perform public.ledger_append(
-      chain.id,
-      'commission',
-      commission_amt,
-      format('com:%s:L%s', _order_id, chain.lvl),
-      format(
-        'Level %s (%s%%) — %s',
-        chain.lvl,
-        trim(trailing '.' from trim(trailing '0' from rate::text)),
-        coalesce(_buyer_name, 'Member')
-      ),
-      _order_id,
-      _buyer,
-      chain.lvl
-    );
-  end loop;
-end;
-$$;
-
--- ---------------------------------------------------------------------------
--- 6. Activating a plant
+-- 5. Activating a trading product
 -- ---------------------------------------------------------------------------
 
 create or replace function public.purchase_product(_product_id uuid, _note text default null)
@@ -757,8 +766,10 @@ declare
   s public.app_settings;
   order_id uuid;
   avail numeric;
-  has_plant boolean;
+  has_product boolean;
   created timestamptz := now();
+  cashback numeric := 0;
+  kampala_dow integer;
 begin
   if uid is null then raise exception 'Not authenticated'; end if;
   select * into s from public.app_settings where id = 1;
@@ -769,19 +780,17 @@ begin
   if buyer.is_banned then raise exception 'Account is suspended'; end if;
 
   select * into prod from public.products where id = _product_id and active = true;
-  if not found then raise exception 'That plant is not available'; end if;
+  if not found then raise exception 'That product is not available'; end if;
 
-  -- Bonus plants are a reward for real members, not a way in.
   if prod.category = 'bonus' then
     select exists (
-      select 1 from public.orders o where o.user_id = uid and o.product_category = 'plant'
-    ) into has_plant;
-    if not has_plant then
-      raise exception 'Activate any processing plant first to unlock this bonus';
+      select 1 from public.orders o where o.user_id = uid and o.product_category = 'product'
+    ) into has_product;
+    if not has_product then
+      raise exception 'Activate a trading product first to unlock this bonus';
     end if;
   end if;
 
-  -- Money already promised to a pending withdrawal cannot also buy a plant.
   avail := public.available_balance(uid);
   if avail < prod.price then
     raise exception 'Not enough wallet balance. Deposit first';
@@ -805,17 +814,34 @@ begin
     uid, order_id, prod.price, coalesce(buyer.full_name, 'Member')
   );
 
+  -- Saturday = 6, Sunday = 0. Strictly above 100,000, so QM100 does not qualify.
+  kampala_dow := extract(dow from (created at time zone 'Africa/Kampala'))::integer;
+  if prod.price > 100000 and kampala_dow in (0, 6) then
+    cashback := round(prod.price * 0.05, 0);
+    if cashback > 0 then
+      perform public.ledger_append(
+        uid,
+        'cashback',
+        cashback,
+        format('cashback:%s', order_id),
+        format('Weekend cashback (5%%) — %s', prod.name),
+        order_id
+      );
+    end if;
+  end if;
+
   return jsonb_build_object(
     'ok', true,
     'order_id', order_id,
     'first_payout_at', public.first_payout_at(created),
+    'cashback', cashback,
     'balance', public.wallet_balance(uid)
   );
 end;
 $$;
 
 -- ---------------------------------------------------------------------------
--- 7. Daily returns, credited at the payout hour
+-- 6. Daily income, credited at 8PM Africa/Kampala
 -- ---------------------------------------------------------------------------
 
 create or replace function public.claim_daily_income()
@@ -831,7 +857,7 @@ declare
   payable integer;
   credited numeric := 0;
   paid_days integer := 0;
-  plants integer := 0;
+  products integer := 0;
   d integer;
 begin
   if uid is null then raise exception 'Not authenticated'; end if;
@@ -849,8 +875,6 @@ begin
     payable := greatest(0, elapsed - rec.days_claimed);
     if payable <= 0 then continue; end if;
 
-    -- One ledger entry per plant-day, so a member can audit every return and a
-    -- re-run can never double-credit the same day.
     for d in (rec.days_claimed + 1)..elapsed loop
       if public.ledger_append(
         uid,
@@ -874,21 +898,20 @@ begin
         status = case when elapsed >= rec.days then 'completed' else 'active' end
     where id = rec.id;
 
-    plants := plants + 1;
+    products := products + 1;
   end loop;
 
   if credited <= 0 then
-    return jsonb_build_object('ok', false, 'amount', 0, 'days', 0, 'plants', 0, 'reason', 'nothing_due');
+    return jsonb_build_object('ok', false, 'amount', 0, 'days', 0, 'products', 0, 'reason', 'nothing_due');
   end if;
 
   return jsonb_build_object(
-    'ok', true, 'amount', credited, 'days', paid_days, 'plants', plants,
+    'ok', true, 'amount', credited, 'days', paid_days, 'products', products,
     'reason', 'credited', 'balance', public.wallet_balance(uid)
   );
 end;
 $$;
 
-/** Everything the wallet card needs, computed server side. */
 create or replace function public.earnings_summary()
 returns jsonb
 language plpgsql
@@ -950,7 +973,7 @@ end;
 $$;
 
 -- ---------------------------------------------------------------------------
--- 8. Team stats for levels 1-2
+-- 7. Team stats for levels 1 and 2
 -- ---------------------------------------------------------------------------
 
 create or replace function public.team_stats()
@@ -959,6 +982,7 @@ language plpgsql
 stable
 security definer
 set search_path = public
+set row_security = off
 as $$
 declare
   uid uuid := auth.uid();
@@ -967,62 +991,101 @@ begin
   if uid is null then raise exception 'Not authenticated'; end if;
 
   with recursive walk as (
-    select p.id, p.referred_by, p.username, p.full_name, p.phone, p.created_at, 1 as lvl
+    select
+      p.id,
+      p.username,
+      p.full_name,
+      p.created_at,
+      1 as lvl,
+      coalesce(nullif(btrim(ref.referral_code), ''), nullif(btrim(up.referral_code), ''), '') as code,
+      null::text as via_username
     from public.profiles p
+    join public.profiles up on up.id = uid
+    left join public.referrals ref
+      on ref.referee_id = p.id
+     and ref.referrer_id = uid
     where p.id <> uid
-      and (
-        p.referred_by = uid
-        or exists (select 1 from public.referrals r where r.referrer_id = uid and r.referee_id = p.id)
-      )
+      and (p.referred_by = uid or ref.referrer_id = uid)
+
     union all
-    select p.id, p.referred_by, p.username, p.full_name, p.phone, p.created_at, w.lvl + 1
-    from public.profiles p
-    join walk w on w.lvl < 2 and p.id <> uid and p.id <> w.id
-    where p.referred_by = w.id
-       or exists (select 1 from public.referrals r where r.referrer_id = w.id and r.referee_id = p.id)
+
+    select
+      p.id,
+      p.username,
+      p.full_name,
+      p.created_at,
+      w.lvl + 1,
+      coalesce(nullif(btrim(ref.referral_code), ''), nullif(btrim(parent.referral_code), ''), ''),
+      w.username
+    from walk w
+    join public.profiles parent on parent.id = w.id
+    join public.profiles p
+      on p.id <> uid
+     and p.id <> w.id
+     and (
+       p.referred_by = w.id
+       or exists (
+         select 1 from public.referrals r
+         where r.referrer_id = w.id and r.referee_id = p.id
+       )
+     )
+    left join public.referrals ref
+      on ref.referee_id = p.id
+     and ref.referrer_id = w.id
+    where w.lvl < 2
   ),
   tree as (
-    select distinct on (id) id, referred_by, username, full_name, phone, created_at, lvl
-    from walk order by id, lvl
+    select distinct on (id)
+      id, username, full_name, created_at, lvl, code, via_username
+    from walk
+    order by id, lvl
   ),
-  volume as (
-    select user_id, coalesce(-sum(amount), 0) as vol
-    from public.ledger_entries where type = 'purchase' group by user_id
+  invested as (
+    select o.user_id, coalesce(sum(o.price), 0) as vol
+    from public.orders o
+    where o.product_category = 'product'
+      and o.status in ('active', 'completed')
+    group by o.user_id
   ),
   deposited as (
     select user_id, coalesce(sum(amount), 0) as dep
-    from public.ledger_entries where type = 'deposit' group by user_id
+    from public.ledger_entries
+    where type = 'deposit'
+    group by user_id
   ),
   earned_from as (
     select source_user_id, referral_level, coalesce(sum(amount), 0) as earned
     from public.ledger_entries
-    where user_id = uid and type = 'commission' and referral_level is not null
+    where user_id = uid
+      and type = 'commission'
+      and referral_level is not null
+      and source_user_id is not null
     group by source_user_id, referral_level
   ),
-  level_earned as (
-    select referral_level as lvl, coalesce(sum(amount), 0) as earned
-    from public.ledger_entries
-    where user_id = uid and type = 'commission' and referral_level is not null
-    group by referral_level
-  ),
   leveled as (
-    select t.lvl as level, t.id, t.username, t.full_name, t.created_at,
-           coalesce(v.vol, 0) as volume,
-           coalesce(d.dep, 0) as deposited,
-           coalesce(e.earned, 0) as earned
+    select
+      t.lvl as level,
+      t.id,
+      t.username,
+      t.full_name,
+      t.created_at,
+      t.code,
+      t.via_username,
+      coalesce(v.vol, 0) as volume,
+      coalesce(d.dep, 0) as deposited,
+      coalesce(e.earned, 0) as earned
     from tree t
-    left join volume v on v.user_id = t.id
+    left join invested v on v.user_id = t.id
     left join deposited d on d.user_id = t.id
-    left join earned_from e on e.source_user_id = t.id and e.referral_level = t.lvl
+    left join earned_from e
+      on e.source_user_id = t.id
+     and e.referral_level = t.lvl
   )
   select jsonb_build_object(
     'total_members', (select count(*) from tree),
     'total_volume', (select coalesce(sum(volume), 0) from leveled),
     'total_deposits', (select coalesce(sum(deposited), 0) from leveled),
-    'total_earned', (
-      select coalesce(sum(amount), 0) from public.ledger_entries
-      where user_id = uid and type = 'commission'
-    ),
+    'total_earned', (select coalesce(sum(earned), 0) from leveled),
     'levels', (
       select coalesce(jsonb_agg(level_obj order by level), '[]'::jsonb)
       from (
@@ -1030,7 +1093,7 @@ begin
           jsonb_build_object(
             'level', g.level,
             'rate', public.referral_rate(g.level),
-            'earned', coalesce((select le.earned from level_earned le where le.lvl = g.level), 0),
+            'earned', coalesce(sum(l.earned), 0),
             'members', count(l.id),
             'deposits', coalesce(sum(l.deposited), 0),
             'volume', coalesce(sum(l.volume), 0),
@@ -1042,7 +1105,10 @@ begin
                   'joined_at', l.created_at,
                   'earned', l.earned,
                   'deposited', l.deposited,
-                  'volume', l.volume
+                  'volume', l.volume,
+                  'referral_code', nullif(l.code, ''),
+                  'rate', public.referral_rate(g.level),
+                  'via_username', l.via_username
                 ) order by l.earned desc, l.volume desc, l.created_at
               ) filter (where l.id is not null),
               '[]'::jsonb
@@ -1060,19 +1126,15 @@ end;
 $$;
 
 -- ---------------------------------------------------------------------------
--- 9. Withdrawals: reserve on request, settle on confirmation
+-- 8. Withdrawals: reserve on request, settle on confirmation
 -- ---------------------------------------------------------------------------
 
-/**
- * Create a withdrawal request. This reserves the gross amount by existing as a
- * PENDING row — `available_balance` drops immediately — but writes nothing to
- * the ledger. The debit happens only in settle_payment on a confirmed payout.
- */
 create or replace function public.request_withdrawal(
   _amount numeric,
   _phone text,
   _provider text default null,
-  _reference text default null
+  _reference text default null,
+  _mode text default 'UNASSIGNED'
 )
 returns jsonb
 language plpgsql
@@ -1086,7 +1148,6 @@ declare
   fee numeric;
   net numeric;
   pay_id uuid;
-  mode text;
 begin
   if uid is null then raise exception 'Not authenticated'; end if;
   select * into s from public.app_settings where id = 1;
@@ -1112,33 +1173,25 @@ begin
 
   fee := round(_amount * s.withdraw_fee_rate, 2);
   net := _amount - fee;
-  mode := case when s.withdraw_auto then 'MARZPAY' else 'MANUAL' end;
 
+  -- _mode is ignored. Only an admin sets MARZPAY or MANUAL.
   insert into public.payments (
     user_id, type, mode, status, provider, amount, fee, net_amount,
     phone_number, external_reference
   ) values (
-    uid, 'WITHDRAWAL', mode, 'PENDING', nullif(_provider, ''), _amount, fee, net,
+    uid, 'WITHDRAWAL', 'UNASSIGNED', 'PENDING', nullif(_provider, ''), _amount, fee, net,
     _phone, coalesce(nullif(btrim(coalesce(_reference, '')), ''), gen_random_uuid()::text)
   )
   returning id into pay_id;
 
   return jsonb_build_object(
-    'ok', true, 'payment_id', pay_id, 'mode', mode,
+    'ok', true, 'payment_id', pay_id, 'mode', 'UNASSIGNED',
     'amount', _amount, 'fee', fee, 'net', net,
     'available', public.available_balance(uid)
   );
 end;
 $$;
 
-/**
- * The single settlement point. Webhooks, status polls, and admin review all
- * converge here, and it is safe to call repeatedly:
- *   deposit  SUCCESS -> credit the wallet, then pay the upline nothing (the
- *                       commission belongs to plant activation, not deposits)
- *   withdraw SUCCESS -> debit net + fee as two entries summing to the gross
- *   any      FAILED  -> release the reservation, touch no money
- */
 create or replace function public.settle_payment(
   _payment_id uuid,
   _ok boolean,
@@ -1159,7 +1212,6 @@ begin
     return jsonb_build_object('ok', false, 'reason', 'not_found');
   end if;
 
-  -- Terminal states never change, so a replayed webhook is a no-op.
   if p.status in ('SUCCESS', 'FAILED', 'CANCELLED') then
     return jsonb_build_object('ok', true, 'reason', 'already_final', 'status', p.status);
   end if;
@@ -1210,7 +1262,7 @@ end;
 $$;
 
 -- ---------------------------------------------------------------------------
--- 10. Admin
+-- 9. Admin
 -- ---------------------------------------------------------------------------
 
 create or replace function public.admin_update_product(
@@ -1238,14 +1290,14 @@ begin
   end if;
 
   select * into prod from public.products where id = _product_id;
-  if not found then raise exception 'Plant not found'; end if;
+  if not found then raise exception 'Product not found'; end if;
   if _days is not null and _days < 1 then raise exception 'Days must be at least 1'; end if;
   if _price is not null and _price < 0 then raise exception 'Price cannot be negative'; end if;
   if _daily_income is not null and _daily_income < 0 then
     raise exception 'Daily return cannot be negative';
   end if;
-  if _category is not null and _category not in ('plant', 'bonus') then
-    raise exception 'Category must be plant or bonus';
+  if _category is not null and _category not in ('product', 'bonus') then
+    raise exception 'Category must be product or bonus';
   end if;
 
   update public.products
@@ -1259,7 +1311,6 @@ begin
   returning * into prod;
 
   if _apply_to_running then
-    -- Never shorten a plant below the days a member has already been paid.
     update public.orders o
     set product_name = prod.name,
         daily_income = prod.daily_income,
@@ -1275,7 +1326,6 @@ begin
 end;
 $$;
 
-/** Signed manual correction. Never edits history, only appends to it. */
 create or replace function public.admin_adjust_wallet(
   _user uuid,
   _amount numeric,
@@ -1305,7 +1355,7 @@ end;
 $$;
 
 -- ---------------------------------------------------------------------------
--- 11. Row level security
+-- 10. Row level security
 -- ---------------------------------------------------------------------------
 
 alter table public.profiles       enable row level security;
@@ -1331,8 +1381,6 @@ create policy profiles_self_update on public.profiles
 drop policy if exists roles_self_select on public.user_roles;
 create policy roles_self_select on public.user_roles
   for select to authenticated using (user_id = auth.uid() or public.is_admin());
-
--- user_secrets intentionally has no policy: service role only.
 
 drop policy if exists products_read on public.products;
 create policy products_read on public.products
@@ -1363,11 +1411,8 @@ drop policy if exists settings_admin_write on public.app_settings;
 create policy settings_admin_write on public.app_settings
   for update to authenticated using (public.is_admin()) with check (public.is_admin());
 
--- No INSERT/UPDATE/DELETE policies on the money tables: members can read their
--- own rows, and every write goes through the functions above.
-
 -- ---------------------------------------------------------------------------
--- 12. Grants
+-- 11. Grants
 -- ---------------------------------------------------------------------------
 
 grant execute on function public.settings() to anon, authenticated;
@@ -1388,40 +1433,86 @@ grant execute on function public.purchase_product(uuid, text) to authenticated;
 grant execute on function public.claim_daily_income() to authenticated;
 grant execute on function public.earnings_summary() to authenticated;
 grant execute on function public.team_stats() to authenticated;
-grant execute on function public.request_withdrawal(numeric, text, text, text) to authenticated;
+grant execute on function public.request_withdrawal(numeric, text, text, text, text) to authenticated;
 
--- Deliberately NOT granted to authenticated — service role only:
-revoke execute on function public.ledger_append(uuid, text, numeric, text, text, uuid, uuid, integer)
-  from anon, authenticated;
-revoke execute on function public.settle_payment(uuid, boolean, text, text, uuid)
-  from anon, authenticated;
-revoke execute on function public.grant_signup_bonus(uuid) from anon;
+revoke all on function public.ledger_append(uuid, text, numeric, text, text, uuid, uuid, integer)
+  from public, anon, authenticated;
+revoke all on function public.settle_payment(uuid, boolean, text, text, uuid)
+  from public, anon, authenticated;
+revoke all on function public.settle_referral_commissions(uuid) from public, anon, authenticated;
+revoke all on function public.grant_signup_bonus(uuid) from public, anon, authenticated;
+revoke all on function public.pay_referral_commissions(uuid, uuid, numeric, text)
+  from public, anon, authenticated;
 revoke execute on function public.admin_adjust_wallet(uuid, numeric, text) from anon;
 revoke execute on function public.admin_update_product(uuid, text, numeric, numeric, integer, text, boolean, boolean) from anon;
 
 -- ---------------------------------------------------------------------------
--- 13. Seed: processing plants at 10% daily for 30 days
+-- 12. Seed: QuantumMine trading products, settings, and 8PM copy
 -- ---------------------------------------------------------------------------
 
-with catalog(name, price, days, daily_income, category, image_url, sort_order) as (
+insert into public.products (name, price, daily_income, days, category, image_url, sort_order, active)
+select v.name, v.price, v.daily_income, v.days, 'product', '/brand/trading_products.jpg', v.sort_order, true
+from (
   values
-    ('Coffee Nursery',      10000::numeric,   30,   1000::numeric, 'plant', '/plants/nursery.svg',   1),
-    ('Robusta Garden',      20000::numeric,   30,   2000::numeric, 'plant', '/plants/robusta.svg',   2),
-    ('Arabica Plot',        50000::numeric,   30,   5000::numeric, 'plant', '/plants/arabica.svg',   3),
-    ('Washing Station',    100000::numeric,   30,  10000::numeric, 'plant', '/plants/washing.svg',   4),
-    ('Roasting Plant',     300000::numeric,   30,  30000::numeric, 'plant', '/plants/roasting.svg',  5),
-    ('Export Warehouse',  1000000::numeric,   30, 100000::numeric, 'plant', '/plants/export.svg',    6)
-)
-insert into public.products (name, price, days, daily_income, category, image_url, sort_order, active)
-select c.name, c.price, c.days, c.daily_income, c.category, c.image_url, c.sort_order, true
-from catalog c
-where not exists (select 1 from public.products p where p.name = c.name);
+    ('QM5',    5000::numeric,      500::numeric, 20, 1),
+    ('QM10',   10000::numeric,    1000::numeric, 20, 2),
+    ('QM50',   50000::numeric,    4200::numeric, 21, 3),
+    ('QM100',  100000::numeric,   8400::numeric, 22, 4),
+    ('QM150',  150000::numeric,  10500::numeric, 25, 5),
+    ('QM250',  250000::numeric,  21400::numeric, 26, 6),
+    ('QM350',  350000::numeric,  31070::numeric, 27, 7),
+    ('QM500',  500000::numeric,  40400::numeric, 30, 8),
+    ('QM1000', 1000000::numeric, 80800::numeric, 40, 9)
+) as v(name, price, daily_income, days, sort_order)
+where not exists (
+  select 1 from public.products p where p.name = v.name
+);
+
+update public.products as p
+set
+  price = v.price,
+  daily_income = v.daily_income,
+  days = v.days,
+  category = 'product',
+  image_url = '/brand/trading_products.jpg',
+  sort_order = v.sort_order,
+  active = true
+from (
+  values
+    ('QM5',    5000::numeric,      500::numeric, 20, 1),
+    ('QM10',   10000::numeric,    1000::numeric, 20, 2),
+    ('QM50',   50000::numeric,    4200::numeric, 21, 3),
+    ('QM100',  100000::numeric,   8400::numeric, 22, 4),
+    ('QM150',  150000::numeric,  10500::numeric, 25, 5),
+    ('QM250',  250000::numeric,  21400::numeric, 26, 6),
+    ('QM350',  350000::numeric,  31070::numeric, 27, 7),
+    ('QM500',  500000::numeric,  40400::numeric, 30, 8),
+    ('QM1000', 1000000::numeric, 80800::numeric, 40, 9)
+) as v(name, price, daily_income, days, sort_order)
+where p.name = v.name;
 
 update public.app_settings
-set welcome_message = coalesce(nullif(btrim(welcome_message), ''),
-      'Welcome to CoffeeUG!' || chr(10) || chr(10) ||
-      'Deposit to your wallet, activate a processing plant, and your returns arrive at 10PM every day for 30 days.' || chr(10) || chr(10) ||
-      'Tap Channel for updates and Support if you need help.'),
-    about_text = coalesce(nullif(btrim(about_text), ''),
-      'CoffeeUG is a Uganda-focused coffee business built around the opportunities within the coffee industry.')
+set
+  payout_hour = 20,
+  daily_rate_percent = 10,
+  term_days = 20,
+  signup_bonus = 1000,
+  deposit_min = 5000,
+  deposit_max = 10000000,
+  withdraw_min = 3000,
+  withdraw_max = 5000000,
+  withdraw_fee_rate = 0.15,
+  withdraw_start = '08:00',
+  withdraw_end = '20:00',
+  withdraw_auto = false,
+  telegram_channel_url = 'https://t.me/+x70pBloGZDNmYjg0',
+  telegram_support_url = 'https://t.me/+x70pBloGZDNmYjg0',
+  about_text =
+    'QuantumMine AI is presented as an AI-powered trading platform that uses automated trading robots to analyze market information and identify potential trading opportunities. '
+    || 'Our trading robots are designed to use algorithmic analysis, market trends, and sentiment signals to support automated trading decisions. The goal is to make trading more systematic and reduce the need for users to monitor markets manually.',
+  welcome_message =
+    'Welcome to QuantumMine AI!' || chr(10) || chr(10) ||
+    'Deposit to your wallet, activate a trading product, and your returns arrive at 8PM every day for that product''s term.' || chr(10) || chr(10) ||
+    'On weekends, each investment above UGX 100,000 receives 5% cashback.' || chr(10) || chr(10) ||
+    'Tap Channel for updates and Support if you need help.'
 where id = 1;

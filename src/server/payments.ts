@@ -264,7 +264,7 @@ export async function createDeposit(
       amount: Math.round(amount),
       phone: msisdn,
       reference,
-      description: "CoffeeUG wallet deposit",
+      description: "QuantumMine AI wallet deposit",
       callbackUrl: marzpayCallbackUrl(),
     });
     const { data: updated } = await admin
@@ -357,7 +357,7 @@ export async function dispatchWithdrawal(
       amount: Math.round(current.net_amount),
       phone: current.phone_number,
       reference: current.external_reference,
-      description: "CoffeeUG withdrawal",
+      description: "QuantumMine AI withdrawal",
       callbackUrl: marzpayCallbackUrl(),
     });
     const { data } = await admin

@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import { Headphones, Megaphone, X } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/brand";
-import { BRAND_NAME } from "@/lib/platform";
+import { BRAND_NAME, BRAND_TAGLINE } from "@/lib/platform";
 
-const STORAGE_KEY = "coffeeug_welcome_seen";
+const STORAGE_KEY = "quantummine_welcome_seen";
 
 export function WelcomePopup({
   message,
@@ -39,7 +39,7 @@ export function WelcomePopup({
           <Logo size={44} />
           <div className="flex-1">
             <h2 className="font-display text-lg font-semibold">Welcome to {BRAND_NAME}</h2>
-            <p className="text-xs text-muted-foreground">Grow · Export · Prosper</p>
+            <p className="text-xs text-muted-foreground">{BRAND_TAGLINE}</p>
           </div>
           <button type="button" onClick={dismiss} aria-label="Close" className="p-1">
             <X className="size-5 text-muted-foreground" />

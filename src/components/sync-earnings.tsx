@@ -7,7 +7,7 @@ import { useSessionUser } from "@/hooks/use-app-data";
 
 /**
  * Credits any daily returns that have passed their payout hour. Runs on mount,
- * on window focus, and once a minute, so a member who opens the app after 10PM
+ * on window focus, and once a minute, so a member who opens the app after 8PM
  * simply finds the money already in their wallet.
  */
 export function SyncPlantReturns() {

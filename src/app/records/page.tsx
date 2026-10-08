@@ -10,12 +10,13 @@ import type { LedgerType } from "@/lib/types";
 const LABELS: Record<LedgerType, string> = {
   signup_bonus: "Registration bonus",
   deposit: "Deposit",
-  purchase: "Plant activated",
+  purchase: "Product activated",
   daily_income: "Daily return",
   commission: "Team commission",
   withdrawal: "Withdrawal",
   withdrawal_fee: "Withdrawal fee",
   adjustment: "Adjustment",
+  cashback: "Weekend cashback",
 };
 
 type Tab = "wallet" | "deposits" | "withdrawals";

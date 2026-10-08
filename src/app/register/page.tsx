@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff } from "@/components/icons";
-import { AuthHero } from "@/components/auth-hero";
+import { AuthFrame } from "@/components/auth-hero";
 import { createClient, supabaseConfigured } from "@/lib/supabase/client";
 import {
   captureInviteFromSearch,
@@ -17,7 +17,7 @@ import {
   rememberInvite,
 } from "@/lib/invite";
 import { USERNAME_RULES, isValidUsername, usernameToEmail } from "@/lib/username";
-import { SIGNUP_BONUS } from "@/lib/platform";
+import { BRAND_NAME, SIGNUP_BONUS } from "@/lib/platform";
 import { formatMoney } from "@/lib/money";
 
 export default function RegisterPage() {
@@ -94,7 +94,7 @@ function RegisterForm() {
         return;
       }
 
-      toast.success(`Welcome to CoffeeUG! ${formatMoney(SIGNUP_BONUS)} bonus added.`);
+      toast.success(`Welcome to ${BRAND_NAME}! ${formatMoney(SIGNUP_BONUS)} bonus added.`);
       router.replace("/");
       router.refresh();
     } catch (err) {
@@ -105,21 +105,19 @@ function RegisterForm() {
   }
 
   return (
-    <div className="min-h-screen">
-      <div className="mx-auto max-w-[560px]">
-        <AuthHero />
-
-        <div className="app-card mx-4 mb-16 px-6 pb-8 pt-7">
-          <h1 className="text-2xl font-semibold">Open an account</h1>
-          <p className="mt-1 text-[13px] text-muted-foreground">
-            A referral code links you to whoever invited you.
-          </p>
-
-          <p className="app-panel mt-4 px-3 py-2 text-center text-xs font-semibold text-primary">
-            Get {formatMoney(SIGNUP_BONUS)} the moment you register
-          </p>
-
-          <form onSubmit={onSubmit} className="mt-6 space-y-4">
+    <AuthFrame
+      title="Create account"
+      subtitle={`Get ${formatMoney(SIGNUP_BONUS)} the moment you register.`}
+      footer={
+        <>
+          Already have an account?{" "}
+          <Link href="/login" className="font-semibold text-primary">
+            Sign in
+          </Link>
+        </>
+      }
+    >
+          <form onSubmit={onSubmit} className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="name">Names</Label>
               <Input
@@ -185,15 +183,9 @@ function RegisterForm() {
             </div>
 
             <Button type="submit" size="lg" className="h-12 w-full text-base" disabled={busy}>
-              {busy ? "Creating account…" : "Create Account"}
+              {busy ? "Creating account…" : "Create account"}
             </Button>
           </form>
-
-          <Link href="/login" className="mt-6 block text-center text-sm font-semibold text-accent">
-            I already have an account
-          </Link>
-        </div>
-      </div>
-    </div>
+    </AuthFrame>
   );
 }

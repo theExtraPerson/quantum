@@ -51,7 +51,7 @@ export function AdminPlants() {
     }
     toast.success(
       applyToRunning
-        ? `Saved and applied to ${data.orders_updated ?? 0} running plants`
+        ? `Saved and applied to ${data.orders_updated ?? 0} running products`
         : "Saved for new activations",
     );
     await load();
@@ -70,7 +70,7 @@ export function AdminPlants() {
       toast.error(data.error ?? "Could not create");
       return;
     }
-    toast.success("Plant added");
+    toast.success("Product added");
     setNewPlant({ name: "", price: "" });
     await load();
   }
@@ -78,7 +78,7 @@ export function AdminPlants() {
   return (
     <div className="space-y-3">
       <div className="app-card space-y-3 p-4">
-        <h3 className="text-sm font-bold">Add a plant</h3>
+        <h3 className="text-sm font-bold">Add a product</h3>
         <div className="grid grid-cols-2 gap-2">
           <div className="space-y-1">
             <Label htmlFor="new-name">Name</Label>
@@ -107,7 +107,7 @@ export function AdminPlants() {
           disabled={busy === "new" || !newPlant.name || !newPlant.price}
           onClick={create}
         >
-          Add plant
+          Add product
         </Button>
       </div>
 

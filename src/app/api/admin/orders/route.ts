@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin, jsonError } from "@/lib/admin-auth";
 
-/** Every plant activation, with its member and both notes. */
+/** Every product activation, with its member and both notes. */
 export async function GET(request: Request) {
   const { admin, error } = await requireAdmin();
   if (error || !admin) return jsonError(error ?? "Forbidden", error === "Unauthorized" ? 401 : 403);

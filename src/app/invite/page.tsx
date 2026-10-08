@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
 import { toast } from "sonner";
 import { AppShell, SectionTitle } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -10,7 +9,7 @@ import { Logo } from "@/components/brand";
 import { useProfile, useSessionUser, useTeamStats } from "@/hooks/use-app-data";
 import { inviteShareText, inviteUrl } from "@/lib/invite";
 import { formatMoney } from "@/lib/money";
-import { BRAND_NAME, INVITE_IMAGE, REFERRAL_RATES, SITE_URL } from "@/lib/platform";
+import { BRAND_NAME, BRAND_TAGLINE, REFERRAL_RATES, SITE_URL } from "@/lib/platform";
 
 export default function InvitePage() {
   const { user } = useSessionUser();
@@ -56,18 +55,9 @@ export default function InvitePage() {
             <Logo size={64} />
             <p className="font-display text-xl font-semibold">{BRAND_NAME}</p>
             <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-              Grow · Export · Prosper
+              {BRAND_TAGLINE}
             </p>
           </div>
-
-          <Image
-            src={INVITE_IMAGE}
-            alt={`${BRAND_NAME} invitation poster`}
-            width={1086}
-            height={1629}
-            sizes="(max-width: 640px) 100vw, 560px"
-            className="h-auto w-full"
-          />
 
           <div className="space-y-3 p-4">
             <div>
@@ -118,7 +108,7 @@ export default function InvitePage() {
             <CommissionRow
               level={1}
               rate={REFERRAL_RATES[0]}
-              body="Paid when someone who used your code successfully invests in a plant."
+              body="Paid when someone who used your code successfully activates a product."
             />
             <CommissionRow
               level={2}

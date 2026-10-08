@@ -77,7 +77,7 @@ export function AdminReferrals() {
       <p className="text-xs text-muted-foreground">
         Level 1 ({snapshot.level1Rate}%) is paid to the owner of the code. Level 2 (
         {snapshot.level2Rate}%) is paid to that person&apos;s inviter. Both are credited only after
-        the invitee successfully invests in a plant.
+        the invitee successfully activates a product.
       </p>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -87,7 +87,7 @@ export function AdminReferrals() {
             type="button"
             onClick={() => setFilter(item.id)}
             className={`rounded-full px-3 py-1.5 text-xs font-semibold text-white ${
-              filter === item.id ? "bg-primary shadow-[inset_0_0_0_2px_#ffffff]" : "bg-[#14331f]"
+              filter === item.id ? "bg-primary shadow-[inset_0_0_0_2px_#ffffff]" : "bg-[#0B1F4B]"
             }`}
           >
             {item.label}

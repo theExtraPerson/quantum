@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Toaster } from "sonner";
 import { PendingInviteApplier } from "@/components/pending-invite";
 import { SyncPlantReturns } from "@/components/sync-earnings";
+import { ThemeProvider } from "@/components/theme";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [client] = useState(
@@ -16,10 +17,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={client}>
-      <PendingInviteApplier />
-      <SyncPlantReturns />
-      {children}
-      <Toaster richColors position="top-center" />
+      <ThemeProvider>
+        <PendingInviteApplier />
+        <SyncPlantReturns />
+        {children}
+        <Toaster richColors position="top-center" />
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

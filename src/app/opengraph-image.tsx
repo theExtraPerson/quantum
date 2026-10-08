@@ -1,16 +1,10 @@
 import { ImageResponse } from "next/og";
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
 
-export const alt = "CoffeeUG — Grow, Export, Prosper";
+export const alt = "QuantumMine AI — Trade Smarter, Earn Bigger";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-/** Default link preview: the logo on the dark app background. */
-export default async function Image() {
-  const logo = await readFile(join(process.cwd(), "public/brand/logo.jpg"));
-  const logoSrc = `data:image/jpeg;base64,${Buffer.from(logo).toString("base64")}`;
-
+export default function Image() {
   return new ImageResponse(
     (
       <div
@@ -21,20 +15,14 @@ export default async function Image() {
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          gap: 24,
-          backgroundColor: "#F6F3E8",
-          backgroundImage:
-            "radial-gradient(90% 42% at 100% -8%, rgba(228,194,0,0.28) 0%, transparent 58%), linear-gradient(#FBF8F0 0%, #E7F2E6 100%)",
-          color: "#14331F",
+          backgroundColor: "#1558C0",
+          color: "#ffffff",
         }}
       >
-        <img src={logoSrc} width={300} height={300} alt="" style={{ borderRadius: 150 }} />
-        <div style={{ fontSize: 64, fontWeight: 700 }}>CoffeeUG</div>
-        <div style={{ fontSize: 26, letterSpacing: 6, color: "#4D6B58" }}>
-          GROW · EXPORT · PROSPER
-        </div>
-        <div style={{ fontSize: 24, color: "#146C34" }}>
-          Real coffee, real income · 10% daily for 20 days
+        <div style={{ width: 72, height: 8, backgroundColor: "#F5C400", marginBottom: 28 }} />
+        <div style={{ fontSize: 64, fontWeight: 700 }}>QuantumMine AI</div>
+        <div style={{ fontSize: 24, letterSpacing: 4, marginTop: 16, color: "#F5C400" }}>
+          TRADE SMARTER · EARN BIGGER
         </div>
       </div>
     ),

@@ -103,7 +103,7 @@ export function AdminPayments({
             type="button"
             onClick={() => setFilter(f.id)}
             className={`rounded-full px-3 py-1.5 text-xs font-semibold text-white ${
-              filter === f.id ? "bg-primary shadow-[inset_0_0_0_2px_#ffffff]" : "bg-[#14331f]"
+              filter === f.id ? "bg-primary shadow-[inset_0_0_0_2px_#ffffff]" : "bg-[#0B1F4B]"
             }`}
           >
             {f.label}
@@ -176,7 +176,7 @@ export function AdminPayments({
               <p className="alert-bad px-3 py-2 text-xs">{row.failure_reason}</p>
             ) : null}
             {isWithdrawal && row.admin_note?.startsWith(PAYMENT_REVIEW_PREFIX) ? (
-              <p className="rounded-[13px] bg-[#e4c200]/35 px-3 py-2 text-xs font-semibold text-[#14331f]">
+              <p className="rounded-[13px] bg-[#f5c400]/35 px-3 py-2 text-xs font-semibold text-[#0B1F4B]">
                 {row.admin_note}
               </p>
             ) : isWithdrawal && row.admin_note && !open ? (
@@ -217,7 +217,7 @@ export function AdminPayments({
                           className={`rounded-full px-3 py-2 text-xs font-semibold text-white ${
                             payout === id
                               ? "bg-primary shadow-[inset_0_0_0_2px_#ffffff]"
-                              : "bg-[#14331f]"
+                              : "bg-[#0B1F4B]"
                           }`}
                         >
                           {label}

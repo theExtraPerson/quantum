@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { AppShell, SectionTitle } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
+import { formatMoney } from "@/lib/money";
 import { Logo } from "@/components/brand";
 import {
   ABOUT_MISSION,
@@ -11,13 +12,14 @@ import {
   BRAND_NAME,
   BRAND_TAGLINE,
   COMPANY_NAME,
-  DAILY_RATE_PERCENT,
   FOUNDED,
+  MIN_WITHDRAW,
   REFERRAL_RATES,
+  SIGNUP_BONUS,
   SUPPORT_HANDLE,
   TELEGRAM_CHANNEL_URL,
   TELEGRAM_SUPPORT_URL,
-  TERM_DAYS,
+  WEEKEND_CASHBACK_MIN,
   payoutClockLabel,
 } from "@/lib/platform";
 
@@ -63,15 +65,19 @@ export default function AboutPage() {
         <section>
           <SectionTitle>How earning works</SectionTitle>
           <dl className="app-card divide-y divide-border">
-            <Fact term="Daily return" detail={`${DAILY_RATE_PERCENT}% of the amount you invest, every day`} />
-            <Fact term="Term" detail={`${TERM_DAYS} days per plant`} />
+            <Fact term="Daily return" detail="Each product pays its listed daily income" />
+            <Fact term="Term" detail="Set on the product, from 20 to 40 days" />
             <Fact term="Payout time" detail={`${payoutClockLabel()} daily, Africa/Kampala`} />
             <Fact
               term="Referral commission"
               detail={`${REFERRAL_RATES[0]}% level 1 · ${REFERRAL_RATES[1]}% level 2, after they invest`}
             />
-            <Fact term="Registration bonus" detail="UGX 500 on your first sign-in" />
-            <Fact term="Withdrawals" detail="From UGX 3,000, with a 15% fee" />
+            <Fact
+              term="Weekend cashback"
+              detail={`5% on investments above ${formatMoney(WEEKEND_CASHBACK_MIN)}, Saturday and Sunday`}
+            />
+            <Fact term="Registration bonus" detail={`${formatMoney(SIGNUP_BONUS)} when you register`} />
+            <Fact term="Withdrawals" detail={`From ${formatMoney(MIN_WITHDRAW)}, with a 15% fee`} />
           </dl>
         </section>
 

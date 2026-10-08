@@ -1,19 +1,32 @@
-import Image from "next/image";
 import Link from "next/link";
-import { BRAND_LOGO_PATH, BRAND_NAME, BRAND_TAGLINE } from "@/lib/platform";
+import { BRAND_NAME, BRAND_TAGLINE } from "@/lib/platform";
 import { cn } from "@/lib/utils";
 
-/** The CoffeeUG mark. Used in headers, auth screens, and share cards. */
+/** Geometric mark. No photograph. */
+export function Mark({ size = 36, className }: { size?: number; className?: string }) {
+  return (
+    <span
+      aria-hidden
+      className={cn("relative inline-flex items-center justify-center font-display font-bold text-primary", className)}
+      style={{ width: size, height: size, fontSize: size * 0.46 }}
+    >
+      Q
+      <span
+        className="absolute rounded-full bg-gold"
+        style={{ width: size * 0.18, height: size * 0.18, top: size * 0.08, right: size * 0.02 }}
+      />
+    </span>
+  );
+}
+
 export function Logo({ size = 40, className }: { size?: number; className?: string }) {
   return (
-    <Image
-      src={BRAND_LOGO_PATH}
-      alt={`${BRAND_NAME} logo`}
-      width={size}
-      height={size}
-      priority={size <= 48}
-      className={cn("rounded-full object-cover", className)}
-    />
+    <span
+      className={cn("inline-flex items-center justify-center rounded-2xl bg-white shadow-[inset_0_0_0_1px_var(--border)]", className)}
+      style={{ width: size, height: size }}
+    >
+      <Mark size={size * 0.72} />
+    </span>
   );
 }
 

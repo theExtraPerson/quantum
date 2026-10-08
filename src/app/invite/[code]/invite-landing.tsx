@@ -12,10 +12,8 @@ import { useSessionUser } from "@/hooks/use-app-data";
 import {
   BRAND_NAME,
   BRAND_TAGLINE,
-  DAILY_RATE_PERCENT,
   REFERRAL_RATES,
   SIGNUP_BONUS,
-  TERM_DAYS,
   payoutClockLabel,
 } from "@/lib/platform";
 import { formatMoney } from "@/lib/money";
@@ -85,9 +83,8 @@ export function InviteLanding({
               moment you register.
             </Bullet>
             <Bullet>
-              Activate a processing plant and earn{" "}
-              <span className="font-bold text-accent">{DAILY_RATE_PERCENT}% daily</span> for{" "}
-              {TERM_DAYS} days.
+              Activate a trading product and collect its listed daily income at{" "}
+              <span className="font-bold text-accent">{payoutClockLabel()}</span>.
             </Bullet>
             <Bullet>
               Returns arrive at{" "}

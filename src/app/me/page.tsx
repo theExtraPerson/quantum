@@ -31,7 +31,7 @@ import {
 import { createClient, supabaseConfigured } from "@/lib/supabase/client";
 import { formatKampalaDate } from "@/lib/date";
 import { formatMoney } from "@/lib/money";
-import { COMPANY_NAME, FOUNDED, SUPPORT_HANDLE } from "@/lib/platform";
+import { BRAND_NAME, COMPANY_NAME, FOUNDED, SUPPORT_HANDLE } from "@/lib/platform";
 
 export default function MePage() {
   const router = useRouter();
@@ -80,7 +80,7 @@ export default function MePage() {
             {formatMoney(earnings?.balance ?? 0)}
           </p>
           <div className="mt-3 grid grid-cols-2 gap-2">
-            <Tile label="From plants" value={formatMoney(earnings?.plantEarned ?? 0)} />
+            <Tile label="From products" value={formatMoney(earnings?.plantEarned ?? 0)} />
             <Link href="/team" className="stat-tile block">
               <div className="text-[10px] font-semibold text-muted-foreground">From team</div>
               <div className="mt-0.5 truncate text-sm font-bold text-primary">
@@ -115,10 +115,10 @@ export default function MePage() {
         </div>
 
         <nav className="app-card divide-y divide-border">
-          <Item href="/orders" icon={Package} label="My plants" hint="Progress and returns" />
+          <Item href="/orders" icon={Package} label="My products" hint="Progress and returns" />
           <Item href="/records" icon={History} label="Records" hint="Wallet, deposits, withdrawals" />
           <Item href="/invite" icon={Share2} label="Invite friends" hint="Your code and link" />
-          <Item href="/about" icon={Info} label="About CoffeeUG" hint={`${COMPANY_NAME} · since ${FOUNDED}`} />
+          <Item href="/about" icon={Info} label={`About ${BRAND_NAME}`} hint={`${COMPANY_NAME} · since ${FOUNDED}`} />
           {isAdmin ? (
             <Item href="/admin" icon={LayoutDashboard} label="Admin panel" hint="Manage the platform" />
           ) : null}
@@ -146,7 +146,7 @@ export default function MePage() {
             <span className="flex-1">
               <span className="block text-sm font-bold">Download the app</span>
               <span className="block text-xs text-muted-foreground">
-                Install CoffeeUG on your home screen
+                Install {BRAND_NAME} on your home screen
               </span>
             </span>
           </button>

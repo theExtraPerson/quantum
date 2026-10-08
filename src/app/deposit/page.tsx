@@ -190,7 +190,7 @@ export default function DepositPage() {
 
         {phase === "waiting" ? (
           <div className="app-card space-y-3 p-4 text-center">
-            <div className="mx-auto size-10 animate-spin rounded-full border-4 border-cream border-t-accent" />
+            <div className="mx-auto size-10 animate-spin rounded-full border-4 border-muted border-t-accent" />
             <p className="font-bold">Waiting for your approval</p>
             <p className="text-sm text-muted-foreground">{message}</p>
             <p className="text-xs text-muted-foreground">
@@ -207,8 +207,8 @@ export default function DepositPage() {
           <div className="app-card space-y-3 p-4 text-center">
             <p className="font-display text-xl font-bold text-accent">Deposit received</p>
             <p className="text-sm text-muted-foreground">{message}</p>
-            <Button className="w-full" onClick={() => router.push("/plants#invest")}>
-              Process your coffee
+            <Button className="w-full" onClick={() => router.push("/products")}>
+              Choose a product
             </Button>
           </div>
         ) : null}
