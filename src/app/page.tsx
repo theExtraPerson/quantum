@@ -1,15 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { Clock, Headphones, Megaphone } from "@/components/icons";
+import { Clock } from "@/components/icons";
 import { AppShell } from "@/components/app-shell";
+import { LiveMarkets } from "@/components/live-markets";
 import { QuickActions } from "@/components/quick-actions";
 import { WelcomePopup } from "@/components/welcome-popup";
-import { Button } from "@/components/ui/button";
 import { useAppSettings, useEarnings, useProfile, useSessionUser, useTeamStats } from "@/hooks/use-app-data";
 import { formatMoney } from "@/lib/money";
 import { timeUntil } from "@/lib/date";
-import { REFERRAL_RATES, TELEGRAM_CHANNEL_URL, TELEGRAM_SUPPORT_URL, payoutClockLabel } from "@/lib/platform";
+import { REFERRAL_RATES, payoutClockLabel } from "@/lib/platform";
 
 export default function HomePage() {
   const { user } = useSessionUser();
@@ -21,8 +21,6 @@ export default function HomePage() {
   const signedIn = Boolean(user);
   const payoutLabel = payoutClockLabel(earnings?.payoutHour ?? settings?.payout_hour);
   const name = profile?.full_name?.split(" ")[0] ?? "Member";
-  const channel = settings?.telegram_channel_url || TELEGRAM_CHANNEL_URL;
-  const support = settings?.telegram_support_url || TELEGRAM_SUPPORT_URL;
 
   return (
     <AppShell>
@@ -79,19 +77,8 @@ export default function HomePage() {
           <QuickActions />
         </div>
 
-        <div className="mt-5 grid grid-cols-2 gap-2">
-          <a href={channel} target="_blank" rel="noreferrer">
-            <Button variant="secondary" className="w-full">
-              <Megaphone className="size-4" />
-              Channel
-            </Button>
-          </a>
-          <a href={support} target="_blank" rel="noreferrer">
-            <Button variant="secondary" className="w-full">
-              <Headphones className="size-4" />
-              Support
-            </Button>
-          </a>
+        <div className="mt-6">
+          <LiveMarkets />
         </div>
 
         {signedIn && earnings?.nextPayoutAt && earnings.activePlants > 0 ? (

@@ -45,11 +45,12 @@ const BOTTOM = [
   { href: "/products", label: "Products", icon: Bot },
   { href: "/invite", label: "Invite", icon: Share2 },
   { href: "/orders", label: "Revenue", icon: Package },
-  { href: "/me", label: "Mine", icon: User },
+  { href: "/mine", label: "Mine", icon: User },
 ] as const;
 
 function isActive(pathname: string, href: string) {
-  return href === "/" ? pathname === "/" : pathname.startsWith(href);
+  if (href === "/") return pathname === "/";
+  return pathname === href || pathname.startsWith(`${href}/`);
 }
 
 export function AppShell({
