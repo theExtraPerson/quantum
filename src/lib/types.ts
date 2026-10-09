@@ -48,7 +48,10 @@ export type LedgerType =
   | "withdrawal"
   | "withdrawal_fee"
   | "adjustment"
-  | "cashback";
+  | "cashback"
+  | "gift"
+  | "checkin"
+  | "transfer";
 
 export type LedgerEntry = {
   id: number;
@@ -111,6 +114,8 @@ export type AppSettings = {
   withdraw_end: string;
   withdraw_auto: boolean;
   frozen: boolean;
+  checkin_weekday: number;
+  checkin_weekend: number;
 };
 
 export type TeamMember = {
@@ -146,9 +151,11 @@ export type TeamStats = {
 };
 
 export type EarningsSummary = {
-  /** Sum of the append-only ledger. */
+  /** Sum of both wallets. */
   balance: number;
-  /** Balance minus anything held by a pending withdrawal. */
+  /** Deposits and transfers. Products are bought from here. */
+  recharge: number;
+  /** Earnings that can be withdrawn or moved into recharge. */
   available: number;
   reserved: number;
   /** Returns already earned but not yet written into the wallet. */

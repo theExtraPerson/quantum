@@ -10,6 +10,9 @@ const PROTECTED = [
   "/withdraw",
   "/records",
   "/orders",
+  "/transfer",
+  "/gifts",
+  "/check-in",
   "/admin",
 ];
 

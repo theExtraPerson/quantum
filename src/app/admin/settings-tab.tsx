@@ -71,6 +71,18 @@ export function AdminSettings() {
           value={draft.signup_bonus}
           onChange={(v) => patch({ signup_bonus: v })}
         />
+        <Row>
+          <NumberField
+            label="Check-in weekday"
+            value={draft.checkin_weekday}
+            onChange={(v) => patch({ checkin_weekday: v })}
+          />
+          <NumberField
+            label="Check-in weekend"
+            value={draft.checkin_weekend}
+            onChange={(v) => patch({ checkin_weekend: v })}
+          />
+        </Row>
       </Card>
 
       <Card title="Deposits">

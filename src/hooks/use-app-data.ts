@@ -171,6 +171,7 @@ export function useEarnings(userId?: string) {
       if (!payload || payload.ok === false) return null;
       return {
         balance: Number(payload.balance ?? 0),
+        recharge: Number(payload.recharge ?? 0),
         available: Number(payload.available ?? 0),
         reserved: Number(payload.reserved ?? 0),
         ready: Number(payload.ready ?? 0),
@@ -178,7 +179,7 @@ export function useEarnings(userId?: string) {
         dailyRate: Number(payload.daily_rate ?? 0),
         activePlants: Number(payload.active_plants ?? 0),
         nextPayoutAt: (payload.next_payout_at as string | null) ?? null,
-        payoutHour: Number(payload.payout_hour ?? 22),
+        payoutHour: Number(payload.payout_hour ?? 20),
         totalDeposited: Number(payload.total_deposited ?? 0),
         plantEarned: Number(payload.plant_earned ?? 0),
         referralEarned: Number(payload.referral_earned ?? 0),

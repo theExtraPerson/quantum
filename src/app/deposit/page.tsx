@@ -119,14 +119,14 @@ export default function DepositPage() {
   }
 
   return (
-    <AppShell title="Deposit" back="/">
+    <AppShell title="Recharge" back="/">
       <div className="space-y-4 px-4 py-4">
         <div className="app-card p-4">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Wallet balance
+            Recharge wallet
           </p>
           <p className="font-display text-2xl font-bold text-primary">
-            {formatMoney(earnings?.balance ?? 0)}
+            {formatMoney(earnings?.recharge ?? 0)}
           </p>
         </div>
 

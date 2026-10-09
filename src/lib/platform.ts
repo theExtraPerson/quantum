@@ -31,6 +31,9 @@ export const MAX_DEPOSIT = 10_000_000;
 export const MIN_WITHDRAW = 3000;
 export const MAX_WITHDRAW = 5_000_000;
 export const WITHDRAW_FEE_RATE = 0.15;
+/** Collected once per Kampala day. Saturday and Sunday pay the weekend amount. */
+export const CHECKIN_WEEKDAY = 200;
+export const CHECKIN_WEEKEND = 500;
 
 export const TELEGRAM_CHANNEL_URL = "https://t.me/+x70pBloGZDNmYjg0";
 export const TELEGRAM_SUPPORT_URL = "https://t.me/+x70pBloGZDNmYjg0";
@@ -87,6 +90,8 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   withdraw_end: "20:00",
   withdraw_auto: true,
   frozen: false,
+  checkin_weekday: CHECKIN_WEEKDAY,
+  checkin_weekend: CHECKIN_WEEKEND,
 };
 
 /** What actually reaches the member's phone after the withdrawal fee. */
@@ -129,6 +134,8 @@ export function mergeAppSettings(row?: Partial<AppSettings> | null): AppSettings
     withdraw_end: normalizeTime(row?.withdraw_end),
     withdraw_auto: row?.withdraw_auto ?? d.withdraw_auto,
     frozen: row?.frozen ?? d.frozen,
+    checkin_weekday: Number(row?.checkin_weekday ?? d.checkin_weekday),
+    checkin_weekend: Number(row?.checkin_weekend ?? d.checkin_weekend),
   };
 }
 

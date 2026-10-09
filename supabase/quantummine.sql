@@ -92,8 +92,12 @@ create table if not exists public.ledger_entries (
   user_id         uuid not null references public.profiles(id) on delete cascade,
   type            text not null check (type in (
                     'signup_bonus', 'deposit', 'purchase', 'daily_income',
-                    'commission', 'withdrawal', 'withdrawal_fee', 'adjustment', 'cashback'
+                    'commission', 'withdrawal', 'withdrawal_fee', 'adjustment', 'cashback',
+                    'gift', 'checkin', 'transfer'
                   )),
+  -- recharge: deposits and money moved in, spent on products.
+  -- income: earnings. Withdraw from here, or transfer into recharge.
+  wallet          text not null default 'income' check (wallet in ('recharge', 'income')),
   amount          numeric(14,2) not null,
   note            text,
   source_order_id uuid references public.orders(id) on delete set null,
@@ -152,10 +156,59 @@ create table if not exists public.app_settings (
   withdraw_start       text not null default '08:00',
   withdraw_end         text not null default '20:00',
   withdraw_auto        boolean not null default false,
-  frozen               boolean not null default false
+  frozen               boolean not null default false,
+  checkin_weekday      numeric(14,2) not null default 200,
+  checkin_weekend      numeric(14,2) not null default 500
 );
 
 insert into public.app_settings (id) values (1) on conflict (id) do nothing;
+
+-- Upgrade a database created before the two wallets, gift codes, and check-in.
+alter table public.ledger_entries
+  add column if not exists wallet text not null default 'income';
+
+alter table public.app_settings
+  add column if not exists checkin_weekday numeric(14,2) not null default 200;
+alter table public.app_settings
+  add column if not exists checkin_weekend numeric(14,2) not null default 500;
+
+do $$
+declare
+  cname text;
+begin
+  for cname in
+    select con.conname
+    from pg_constraint con
+    join pg_class rel on rel.oid = con.conrelid
+    join pg_namespace nsp on nsp.oid = rel.relnamespace
+    where nsp.nspname = 'public'
+      and rel.relname = 'ledger_entries'
+      and con.contype = 'c'
+      and pg_get_constraintdef(con.oid) ilike '%signup_bonus%'
+  loop
+    execute format('alter table public.ledger_entries drop constraint %I', cname);
+  end loop;
+end $$;
+
+alter table public.ledger_entries
+  drop constraint if exists ledger_entries_type_check;
+alter table public.ledger_entries
+  add constraint ledger_entries_type_check
+  check (type in (
+    'signup_bonus', 'deposit', 'purchase', 'daily_income',
+    'commission', 'withdrawal', 'withdrawal_fee', 'adjustment', 'cashback',
+    'gift', 'checkin', 'transfer'
+  ));
+
+alter table public.ledger_entries
+  drop constraint if exists ledger_entries_wallet_check;
+alter table public.ledger_entries
+  add constraint ledger_entries_wallet_check
+  check (wallet in ('recharge', 'income'));
+
+update public.ledger_entries
+set wallet = 'recharge'
+where type in ('deposit', 'purchase');
 
 create index if not exists ledger_user_idx         on public.ledger_entries (user_id, created_at desc);
 create index if not exists ledger_type_idx         on public.ledger_entries (type);
@@ -294,6 +347,8 @@ $$;
 -- 3. Wallet
 -- ---------------------------------------------------------------------------
 
+drop function if exists public.ledger_append(uuid, text, numeric, text, text, uuid, uuid, integer);
+
 create or replace function public.ledger_append(
   _user uuid,
   _type text,
@@ -302,22 +357,25 @@ create or replace function public.ledger_append(
   _note text default null,
   _order uuid default null,
   _source_user uuid default null,
-  _level integer default null
+  _level integer default null,
+  _wallet text default 'income'
 )
 returns boolean
 language plpgsql
 security definer
 set search_path = public
 as $$
+declare
+  bucket text := case when _wallet = 'recharge' then 'recharge' else 'income' end;
 begin
   if _user is null or _amount is null or _amount = 0 then
     return false;
   end if;
 
   insert into public.ledger_entries (
-    key, user_id, type, amount, note, source_order_id, source_user_id, referral_level
+    key, user_id, type, amount, note, source_order_id, source_user_id, referral_level, wallet
   ) values (
-    _key, _user, _type, round(_amount, 2), _note, _order, _source_user, _level
+    _key, _user, _type, round(_amount, 2), _note, _order, _source_user, _level, bucket
   );
   return true;
 exception when unique_violation then
@@ -351,6 +409,32 @@ as $$
     and status in ('PENDING', 'PROCESSING');
 $$;
 
+-- Earnings that can be withdrawn or moved into the recharge wallet.
+create or replace function public.income_balance(_user uuid default auth.uid())
+returns numeric
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce(sum(amount), 0)
+  from public.ledger_entries
+  where user_id = _user and wallet = 'income';
+$$;
+
+-- Money that can activate a product: deposits plus transfers in, minus purchases.
+create or replace function public.recharge_balance(_user uuid default auth.uid())
+returns numeric
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce(sum(amount), 0)
+  from public.ledger_entries
+  where user_id = _user and wallet = 'recharge';
+$$;
+
 create or replace function public.available_balance(_user uuid default auth.uid())
 returns numeric
 language sql
@@ -358,7 +442,7 @@ stable
 security definer
 set search_path = public
 as $$
-  select public.wallet_balance(_user) - public.reserved_balance(_user);
+  select public.income_balance(_user) - public.reserved_balance(_user);
 $$;
 
 -- ---------------------------------------------------------------------------
@@ -791,9 +875,9 @@ begin
     end if;
   end if;
 
-  avail := public.available_balance(uid);
+  avail := public.recharge_balance(uid);
   if avail < prod.price then
-    raise exception 'Not enough wallet balance. Deposit first';
+    raise exception 'Not enough recharge balance. Deposit or transfer first';
   end if;
 
   insert into public.orders (
@@ -807,7 +891,8 @@ begin
   returning id into order_id;
 
   perform public.ledger_append(
-    uid, 'purchase', -prod.price, format('buy:%s', order_id), prod.name, order_id
+    uid, 'purchase', -prod.price, format('buy:%s', order_id), prod.name, order_id,
+    null, null, 'recharge'
   );
 
   perform public.pay_referral_commissions(
@@ -944,6 +1029,7 @@ begin
   return jsonb_build_object(
     'ok', true,
     'balance', public.wallet_balance(uid),
+    'recharge', public.recharge_balance(uid),
     'available', public.available_balance(uid),
     'reserved', public.reserved_balance(uid),
     'ready', ready,
@@ -1229,7 +1315,8 @@ begin
       perform public.ledger_append(
         p.user_id, 'deposit', p.amount,
         format('dep:%s', p.id),
-        format('Deposit %s', coalesce(p.provider, 'mobile money'))
+        format('Deposit %s', coalesce(p.provider, 'mobile money')),
+        null, null, null, 'recharge'
       );
     else
       perform public.ledger_append(
@@ -1412,7 +1499,283 @@ create policy settings_admin_write on public.app_settings
   for update to authenticated using (public.is_admin()) with check (public.is_admin());
 
 -- ---------------------------------------------------------------------------
--- 11. Grants
+-- 11. Transfer, gift codes, and check-in
+-- ---------------------------------------------------------------------------
+
+create table if not exists public.gift_codes (
+  id          uuid primary key default gen_random_uuid(),
+  code        text not null unique,
+  amount      numeric(14,2) not null check (amount > 0),
+  max_uses    integer not null default 1 check (max_uses > 0),
+  uses        integer not null default 0 check (uses >= 0),
+  note        text,
+  active      boolean not null default true,
+  created_by  uuid references public.profiles(id),
+  created_at  timestamptz not null default now()
+);
+
+create table if not exists public.gift_redemptions (
+  id           uuid primary key default gen_random_uuid(),
+  gift_code_id uuid not null references public.gift_codes(id) on delete cascade,
+  user_id      uuid not null references public.profiles(id) on delete cascade,
+  amount       numeric(14,2) not null,
+  created_at   timestamptz not null default now(),
+  unique (gift_code_id, user_id)
+);
+
+create table if not exists public.checkins (
+  user_id    uuid not null references public.profiles(id) on delete cascade,
+  claimed_on date not null,
+  amount     numeric(14,2) not null,
+  created_at timestamptz not null default now(),
+  primary key (user_id, claimed_on)
+);
+
+create index if not exists gift_codes_code_idx on public.gift_codes (upper(btrim(code)));
+
+-- Move available earnings into the recharge wallet. Products are bought from recharge.
+create or replace function public.transfer_to_recharge(_amount numeric)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  uid uuid := auth.uid();
+  avail numeric;
+  moved numeric;
+  xfer uuid := gen_random_uuid();
+begin
+  if uid is null then raise exception 'Not authenticated'; end if;
+  if exists (select 1 from public.profiles where id = uid and is_banned) then
+    raise exception 'Account is suspended';
+  end if;
+  if exists (select 1 from public.app_settings where id = 1 and frozen) then
+    raise exception 'Transfers are paused. Please try again later';
+  end if;
+
+  moved := round(coalesce(_amount, 0), 0);
+  if moved <= 0 then raise exception 'Enter an amount to transfer'; end if;
+
+  perform 1 from public.profiles where id = uid for update;
+  avail := public.available_balance(uid);
+  if moved > avail then
+    raise exception 'Amount is more than your available balance (UGX %)', trunc(avail);
+  end if;
+
+  perform public.ledger_append(
+    uid, 'transfer', -moved, format('xfer-out:%s', xfer),
+    'Transfer to recharge wallet', null, null, null, 'income'
+  );
+  perform public.ledger_append(
+    uid, 'transfer', moved, format('xfer-in:%s', xfer),
+    'Transfer from available balance', null, null, null, 'recharge'
+  );
+
+  return jsonb_build_object(
+    'ok', true,
+    'amount', moved,
+    'recharge', public.recharge_balance(uid),
+    'available', public.available_balance(uid)
+  );
+end;
+$$;
+
+create or replace function public.admin_create_gift_code(
+  _amount numeric,
+  _code text default null,
+  _max_uses integer default 1,
+  _note text default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  uid uuid := auth.uid();
+  gift text;
+  rec public.gift_codes%rowtype;
+begin
+  if uid is not null and not public.is_admin(uid) then
+    raise exception 'Admin access required';
+  end if;
+  if _amount is null or _amount <= 0 then raise exception 'Enter a gift amount'; end if;
+  if coalesce(_max_uses, 1) < 1 then raise exception 'Uses must be at least 1'; end if;
+
+  gift := upper(btrim(coalesce(_code, '')));
+  if gift = '' then
+    gift := upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 8));
+  end if;
+  if gift !~ '^[A-Z0-9]{4,16}$' then
+    raise exception 'Use 4–16 letters or numbers';
+  end if;
+
+  insert into public.gift_codes (code, amount, max_uses, note, created_by)
+  values (gift, round(_amount, 0), coalesce(_max_uses, 1), nullif(btrim(coalesce(_note, '')), ''), uid)
+  returning * into rec;
+
+  return jsonb_build_object('ok', true, 'code', rec.code, 'id', rec.id, 'amount', rec.amount);
+end;
+$$;
+
+create or replace function public.redeem_gift_code(_code text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  uid uuid := auth.uid();
+  gift public.gift_codes%rowtype;
+  entered text := upper(btrim(coalesce(_code, '')));
+begin
+  if uid is null then raise exception 'Not authenticated'; end if;
+  if entered = '' then raise exception 'Enter a gift code'; end if;
+  if exists (select 1 from public.profiles where id = uid and is_banned) then
+    raise exception 'Account is suspended';
+  end if;
+  if exists (select 1 from public.app_settings where id = 1 and frozen) then
+    raise exception 'Gift codes are paused. Please try again later';
+  end if;
+
+  select * into gift from public.gift_codes where upper(btrim(code)) = entered for update;
+  if not found or not gift.active then raise exception 'That gift code is not valid'; end if;
+  if gift.uses >= gift.max_uses then raise exception 'That gift code has already been used'; end if;
+  if exists (
+    select 1 from public.gift_redemptions where gift_code_id = gift.id and user_id = uid
+  ) then
+    raise exception 'You have already used this gift code';
+  end if;
+
+  update public.gift_codes set uses = uses + 1 where id = gift.id;
+
+  insert into public.gift_redemptions (gift_code_id, user_id, amount)
+  values (gift.id, uid, gift.amount);
+
+  perform public.ledger_append(
+    uid, 'gift', gift.amount, format('gift:%s:%s', gift.id, uid),
+    format('Gift code %s', gift.code), null, null, null, 'income'
+  );
+
+  return jsonb_build_object(
+    'ok', true,
+    'amount', gift.amount,
+    'code', gift.code,
+    'available', public.available_balance(uid)
+  );
+end;
+$$;
+
+create or replace function public.checkin_status()
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  uid uuid := auth.uid();
+  s public.app_settings;
+  today date := (now() at time zone 'Africa/Kampala')::date;
+  dow integer;
+  weekend boolean;
+  reward numeric;
+  claimed boolean;
+begin
+  if uid is null then raise exception 'Not authenticated'; end if;
+  select * into s from public.app_settings where id = 1;
+  dow := extract(dow from today)::integer;
+  weekend := dow in (0, 6);
+  reward := case when weekend then s.checkin_weekend else s.checkin_weekday end;
+  select exists (
+    select 1 from public.checkins where user_id = uid and claimed_on = today
+  ) into claimed;
+
+  return jsonb_build_object(
+    'ok', true,
+    'claimed', claimed,
+    'weekend', weekend,
+    'reward', reward,
+    'weekday', s.checkin_weekday,
+    'weekend_reward', s.checkin_weekend,
+    'date', today
+  );
+end;
+$$;
+
+create or replace function public.claim_checkin()
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  uid uuid := auth.uid();
+  s public.app_settings;
+  today date := (now() at time zone 'Africa/Kampala')::date;
+  dow integer;
+  weekend boolean;
+  reward numeric;
+begin
+  if uid is null then raise exception 'Not authenticated'; end if;
+  if exists (select 1 from public.profiles where id = uid and is_banned) then
+    raise exception 'Account is suspended';
+  end if;
+
+  select * into s from public.app_settings where id = 1;
+  if s.frozen then raise exception 'Check-in is paused. Please try again later'; end if;
+
+  perform 1 from public.profiles where id = uid for update;
+  if exists (select 1 from public.checkins where user_id = uid and claimed_on = today) then
+    return jsonb_build_object('ok', false, 'reason', 'already', 'amount', 0);
+  end if;
+
+  dow := extract(dow from today)::integer;
+  weekend := dow in (0, 6);
+  reward := round(case when weekend then s.checkin_weekend else s.checkin_weekday end, 0);
+  if reward <= 0 then raise exception 'Check-in rewards are not available right now'; end if;
+
+  insert into public.checkins (user_id, claimed_on, amount)
+  values (uid, today, reward)
+  on conflict (user_id, claimed_on) do nothing;
+  if not found then
+    return jsonb_build_object('ok', false, 'reason', 'already', 'amount', 0);
+  end if;
+
+  perform public.ledger_append(
+    uid, 'checkin', reward, format('checkin:%s:%s', uid, today),
+    case when weekend then 'Weekend check-in' else 'Daily check-in' end,
+    null, null, null, 'income'
+  );
+
+  return jsonb_build_object(
+    'ok', true,
+    'amount', reward,
+    'weekend', weekend,
+    'available', public.available_balance(uid)
+  );
+end;
+$$;
+
+alter table public.gift_codes       enable row level security;
+alter table public.gift_redemptions enable row level security;
+alter table public.checkins         enable row level security;
+
+drop policy if exists gift_codes_admin_select on public.gift_codes;
+create policy gift_codes_admin_select on public.gift_codes
+  for select to authenticated using (public.is_admin());
+
+drop policy if exists gift_redemptions_self_select on public.gift_redemptions;
+create policy gift_redemptions_self_select on public.gift_redemptions
+  for select to authenticated using (user_id = auth.uid() or public.is_admin());
+
+drop policy if exists checkins_self_select on public.checkins;
+create policy checkins_self_select on public.checkins
+  for select to authenticated using (user_id = auth.uid() or public.is_admin());
+
+-- ---------------------------------------------------------------------------
+-- 12. Grants
 -- ---------------------------------------------------------------------------
 
 grant execute on function public.settings() to anon, authenticated;
@@ -1426,6 +1789,8 @@ grant execute on function public.username_available(text) to anon, authenticated
 grant execute on function public.is_admin(uuid) to authenticated;
 grant execute on function public.wallet_balance(uuid) to authenticated;
 grant execute on function public.available_balance(uuid) to authenticated;
+grant execute on function public.income_balance(uuid) to authenticated;
+grant execute on function public.recharge_balance(uuid) to authenticated;
 grant execute on function public.reserved_balance(uuid) to authenticated;
 grant execute on function public.ensure_profile() to authenticated;
 grant execute on function public.apply_invite(text) to authenticated;
@@ -1434,9 +1799,16 @@ grant execute on function public.claim_daily_income() to authenticated;
 grant execute on function public.earnings_summary() to authenticated;
 grant execute on function public.team_stats() to authenticated;
 grant execute on function public.request_withdrawal(numeric, text, text, text, text) to authenticated;
+grant execute on function public.transfer_to_recharge(numeric) to authenticated;
+grant execute on function public.redeem_gift_code(text) to authenticated;
+grant execute on function public.checkin_status() to authenticated;
+grant execute on function public.claim_checkin() to authenticated;
 
-revoke all on function public.ledger_append(uuid, text, numeric, text, text, uuid, uuid, integer)
+revoke all on function public.ledger_append(uuid, text, numeric, text, text, uuid, uuid, integer, text)
   from public, anon, authenticated;
+revoke all on function public.admin_create_gift_code(numeric, text, integer, text)
+  from public, anon;
+grant execute on function public.admin_create_gift_code(numeric, text, integer, text) to service_role;
 revoke all on function public.settle_payment(uuid, boolean, text, text, uuid)
   from public, anon, authenticated;
 revoke all on function public.settle_referral_commissions(uuid) from public, anon, authenticated;

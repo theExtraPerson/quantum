@@ -17,6 +17,9 @@ const LABELS: Record<LedgerType, string> = {
   withdrawal_fee: "Withdrawal fee",
   adjustment: "Adjustment",
   cashback: "Weekend cashback",
+  gift: "Gift code",
+  checkin: "Check-in",
+  transfer: "Transfer",
 };
 
 type Tab = "wallet" | "deposits" | "withdrawals";

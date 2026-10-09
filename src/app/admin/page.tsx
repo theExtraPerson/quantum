@@ -16,11 +16,13 @@ import {
   Share2,
   Shield,
   Bot,
+  Gift,
   Users,
 } from "@/components/icons";
 import { useIsAdmin, useSessionUser } from "@/hooks/use-app-data";
 import { formatKampalaDate } from "@/lib/date";
 import { formatMoney } from "@/lib/money";
+import { AdminGifts } from "./gifts-tab";
 import { AdminOrders } from "./orders-tab";
 import { AdminPayments } from "./payments-tab";
 import { AdminPlants } from "./plants-tab";
@@ -37,6 +39,7 @@ type Tab =
   | "referrals"
   | "activations"
   | "plants"
+  | "gifts"
   | "admins"
   | "settings";
 
@@ -48,6 +51,7 @@ const TABS: { id: Tab; label: string; icon: React.ComponentType<{ className?: st
   { id: "referrals", label: "Referrals", icon: Share2 },
   { id: "activations", label: "Activations", icon: Package },
   { id: "plants", label: "Products", icon: Bot },
+  { id: "gifts", label: "Gift codes", icon: Gift },
   { id: "admins", label: "Admins", icon: Shield },
   { id: "settings", label: "Settings", icon: Settings },
 ];
@@ -125,6 +129,7 @@ export default function AdminPage() {
         {tab === "referrals" ? <AdminReferrals /> : null}
         {tab === "activations" ? <AdminOrders /> : null}
         {tab === "plants" ? <AdminPlants /> : null}
+        {tab === "gifts" ? <AdminGifts /> : null}
         {tab === "admins" ? <AdminsTab /> : null}
         {tab === "settings" ? <AdminSettings /> : null}
       </div>

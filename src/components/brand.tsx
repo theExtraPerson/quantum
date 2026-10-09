@@ -1,31 +1,21 @@
+import Image from "next/image";
 import Link from "next/link";
 import { BRAND_NAME, BRAND_TAGLINE } from "@/lib/platform";
 import { cn } from "@/lib/utils";
 
-/** Geometric mark. No photograph. */
-export function Mark({ size = 36, className }: { size?: number; className?: string }) {
-  return (
-    <span
-      aria-hidden
-      className={cn("relative inline-flex items-center justify-center font-display font-bold text-primary", className)}
-      style={{ width: size, height: size, fontSize: size * 0.46 }}
-    >
-      Q
-      <span
-        className="absolute rounded-full bg-gold"
-        style={{ width: size * 0.18, height: size * 0.18, top: size * 0.08, right: size * 0.02 }}
-      />
-    </span>
-  );
-}
-
 export function Logo({ size = 40, className }: { size?: number; className?: string }) {
   return (
     <span
-      className={cn("inline-flex items-center justify-center rounded-2xl bg-white shadow-[inset_0_0_0_1px_var(--border)]", className)}
+      className={cn("relative inline-flex overflow-hidden rounded-2xl bg-[#061433]", className)}
       style={{ width: size, height: size }}
     >
-      <Mark size={size * 0.72} />
+      <Image
+        src="/brand/logo.jpg"
+        alt={BRAND_NAME}
+        fill
+        sizes={`${size}px`}
+        className="object-cover"
+      />
     </span>
   );
 }

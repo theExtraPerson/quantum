@@ -102,3 +102,68 @@ export async function syncPlantReturns() {
   }
   return { error: null, amount, days };
 }
+
+function moneyPaths() {
+  revalidatePath("/");
+  revalidatePath("/products");
+  revalidatePath("/orders");
+  revalidatePath("/records");
+  revalidatePath("/transfer");
+  revalidatePath("/gifts");
+  revalidatePath("/check-in");
+  revalidatePath("/me");
+}
+
+/** Move available earnings into the recharge wallet. Products are bought from recharge. */
+export async function transferToRecharge(amount: number) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Please sign in first." };
+
+  const moved = Math.round(Number(amount));
+  if (!Number.isFinite(moved) || moved <= 0) return { error: "Enter an amount to transfer." };
+
+  const { error } = await supabase.rpc("transfer_to_recharge", { _amount: moved });
+  if (error) return { error: rpcMessage(error) };
+  moneyPaths();
+  return { error: null };
+}
+
+/** Credit a gift code straight into the available balance. */
+export async function redeemGiftCode(code: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Please sign in first.", amount: 0 };
+
+  const { data, error } = await supabase.rpc("redeem_gift_code", {
+    _code: code.trim().toUpperCase(),
+  });
+  if (error) return { error: rpcMessage(error), amount: 0 };
+  const payload = (typeof data === "string" ? JSON.parse(data) : data) as { amount?: number } | null;
+  moneyPaths();
+  return { error: null, amount: Number(payload?.amount ?? 0) };
+}
+
+/** Collect today's check-in. Weekends pay the weekend reward. */
+export async function claimCheckIn() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Please sign in first.", amount: 0, already: false };
+
+  const { data, error } = await supabase.rpc("claim_checkin");
+  if (error) return { error: rpcMessage(error), amount: 0, already: false };
+  const payload = (typeof data === "string" ? JSON.parse(data) : data) as {
+    ok?: boolean;
+    amount?: number;
+    reason?: string;
+  } | null;
+  if (payload?.reason === "already") return { error: null, amount: 0, already: true };
+  moneyPaths();
+  return { error: null, amount: Number(payload?.amount ?? 0), already: false };
+}

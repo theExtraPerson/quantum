@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { Lock } from "@/components/icons";
+import { ProductCardFrame } from "@/components/product-card-frame";
 import { Button } from "@/components/ui/button";
 import { activatePlant } from "@/app/actions";
 import { formatMoney } from "@/lib/money";
@@ -63,15 +64,15 @@ export function PlantCard({
   }
 
   return (
-    <article className="app-card overflow-hidden">
-      <div className="flex items-center justify-between gap-2 px-4 py-3">
-        <h3 className="font-display text-base font-semibold">{product.name}</h3>
-        <span className={`chip ${isBonus ? "chip-good" : "chip-accent"}`}>
+    <ProductCardFrame>
+      <div className="flex items-start justify-between gap-2">
+        <h3 className="font-display text-base font-semibold tracking-tight">{product.name}</h3>
+        <span className={`chip shrink-0 ${isBonus ? "chip-good" : "chip-accent"}`}>
           {isBonus ? "BONUS" : qualifies ? "5% WEEKENDS" : "TRADE"}
         </span>
       </div>
 
-      <div className="grid grid-cols-2 gap-2.5 px-4 pb-4">
+      <div className="mt-3 grid grid-cols-2 gap-2">
         <Stat label="ACTIVATE" value={formatMoney(product.price)} />
         <Stat label="DAYS" value={String(product.days)} />
         <Stat label={`DAILY AT ${payoutLabel}`} value={formatMoney(product.daily_income)} accent />
@@ -79,31 +80,29 @@ export function PlantCard({
       </div>
 
       {qualifies ? (
-        <p className="px-4 pb-3 text-xs text-muted-foreground">
+        <p className="mt-2 text-[11px] leading-snug text-muted-foreground">
           {cashback > 0
             ? `Weekend cashback today: ${formatMoney(cashback)}.`
             : `On weekends this product returns ${formatMoney(Math.round(price * WEEKEND_CASHBACK_RATE))} cashback.`}
         </p>
       ) : null}
 
-      <div className="px-4 pb-4">
-        <Button
-          onClick={activate}
-          disabled={busy || locked}
-          size="lg"
-          className="h-12 w-full tracking-[0.1em]"
-        >
-          {busy ? "Processing…" : locked ? (
-            <>
-              <Lock className="size-4" />
-              Activate a product first
-            </>
-          ) : (
-            "Activate now"
-          )}
-        </Button>
-      </div>
-    </article>
+      <Button
+        onClick={activate}
+        disabled={busy || locked}
+        size="lg"
+        className="mt-3 h-11 w-full tracking-[0.12em]"
+      >
+        {busy ? "Processing…" : locked ? (
+          <>
+            <Lock className="size-4" />
+            Activate a product first
+          </>
+        ) : (
+          "Activate now"
+        )}
+      </Button>
+    </ProductCardFrame>
   );
 }
 

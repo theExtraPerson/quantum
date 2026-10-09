@@ -24,8 +24,9 @@ export const metadata: Metadata = {
   // The logo doubles as the favicon and the app icon, so the mark appears on
   // the site, the installed app, and every shared link.
   icons: {
-    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
-    shortcut: ["/icon.svg"],
+    icon: [{ url: "/brand/logo.jpg", type: "image/jpeg" }],
+    shortcut: ["/brand/logo.jpg"],
+    apple: [{ url: "/brand/logo.jpg" }],
   },
   openGraph: {
     title,
@@ -34,8 +35,14 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_UG",
     url: SITE_URL,
+    images: [{ url: "/brand/open_graph.jpg", alt: title }],
   },
-  twitter: { card: "summary_large_image", title, description },
+  twitter: {
+    card: "summary_large_image",
+    title,
+    description,
+    images: ["/brand/open_graph.jpg"],
+  },
 };
 
 export const viewport: Viewport = {

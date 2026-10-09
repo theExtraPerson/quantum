@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
+import { ProductCardFrame } from "@/components/product-card-frame";
 import { Button } from "@/components/ui/button";
 import { useOrders, useSessionUser } from "@/hooks/use-app-data";
 import { formatKampala, timeUntil } from "@/lib/date";
@@ -35,30 +36,30 @@ export default function OrdersPage() {
           const running = order.status === "active";
 
           return (
-            <article key={order.id} className="app-card p-4">
+            <ProductCardFrame key={order.id}>
               <div className="flex items-start justify-between gap-2">
-                <div>
-                  <h3 className="font-bold">{order.product_name}</h3>
-                  <p className="text-xs text-muted-foreground">
+                <div className="min-w-0">
+                  <h3 className="truncate font-display font-semibold tracking-tight">{order.product_name}</h3>
+                  <p className="text-[11px] text-muted-foreground">
                     Activated {formatKampala(order.created_at)}
                   </p>
                 </div>
-                <span className={`chip uppercase ${running ? "chip-good" : "chip-off"}`}>
+                <span className={`chip shrink-0 uppercase ${running ? "chip-good" : "chip-off"}`}>
                   {running ? "Running" : "Completed"}
                 </span>
               </div>
 
-              <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
+              <div className="mt-3 h-1 overflow-hidden rounded-full bg-muted">
                 <div className="brand-gradient h-full rounded-full" style={{ width: `${pct}%` }} />
               </div>
-              <p className="mt-1.5 text-xs text-muted-foreground">
+              <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground">
                 Day {order.days_claimed} of {order.days}
                 {running && order.next_payout_at
                   ? ` · next return ${timeUntil(order.next_payout_at)} (${payoutClockLabel()})`
                   : ""}
               </p>
 
-              <div className="mt-3 grid grid-cols-3 gap-2">
+              <div className="mt-3 grid grid-cols-3 gap-1.5">
                 <Tile label="Activated" value={formatMoney(order.price)} />
                 <Tile label="Paid so far" value={formatMoney(earned)} accent />
                 <Tile label="Total return" value={formatMoney(total)} />
@@ -69,7 +70,7 @@ export default function OrdersPage() {
                   Note: {order.note}
                 </p>
               ) : null}
-            </article>
+            </ProductCardFrame>
           );
         })}
       </div>

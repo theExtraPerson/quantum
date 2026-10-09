@@ -74,10 +74,13 @@ export default function MePage() {
 
         <div className="app-card p-4">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Wallet balance
+            Available balance
           </p>
           <p className="font-display text-3xl font-bold text-primary">
-            {formatMoney(earnings?.balance ?? 0)}
+            {formatMoney(earnings?.available ?? 0)}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Recharge wallet {formatMoney(earnings?.recharge ?? 0)}
           </p>
           <div className="mt-3 grid grid-cols-2 gap-2">
             <Tile label="From products" value={formatMoney(earnings?.plantEarned ?? 0)} />
@@ -103,7 +106,7 @@ export default function MePage() {
           <Link href="/deposit">
             <Button className="w-full" size="lg">
               <ArrowDownToLine className="size-4" />
-              Deposit
+              Recharge
             </Button>
           </Link>
           <Link href="/withdraw">

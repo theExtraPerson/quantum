@@ -18,15 +18,20 @@ export async function generateMetadata({
   return {
     title,
     description,
-    // The invite route renders its own branded card via opengraph-image.tsx.
     openGraph: {
       title,
       description,
       url: `${SITE_URL}/invite/${invite}`,
       siteName: BRAND_NAME,
       type: "website",
+      images: [{ url: "/brand/open_graph.jpg", alt: title }],
     },
-    twitter: { card: "summary_large_image", title, description },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: ["/brand/open_graph.jpg"],
+    },
   };
 }
 

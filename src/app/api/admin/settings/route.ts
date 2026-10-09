@@ -19,6 +19,8 @@ const EDITABLE = [
   "withdraw_end",
   "withdraw_auto",
   "frozen",
+  "checkin_weekday",
+  "checkin_weekend",
 ] as const;
 
 export async function GET() {
