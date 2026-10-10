@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { InviteLanding } from "./invite-landing";
+import { redirect } from "next/navigation";
+import { applyInviteCode } from "@/app/actions";
 import { createClient } from "@/lib/supabase/server";
 import { BRAND_NAME, SITE_URL, payoutClockLabel } from "@/lib/platform";
 import { normalizeInviteCode } from "@/lib/invite";
@@ -38,22 +39,21 @@ export async function generateMetadata({
 export default async function InvitePage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
   const invite = normalizeInviteCode(code);
+  if (!invite) redirect("/register");
 
-  // Show the inviter's name so the landing page feels personal and verifiable.
-  let inviterName: string | null = null;
-  if (invite) {
-    try {
-      const supabase = await createClient();
-      const { data } = await supabase.rpc("invite_preview", { _code: invite });
-      const payload = (typeof data === "string" ? JSON.parse(data) : data) as {
-        ok?: boolean;
-        name?: string;
-      } | null;
-      if (payload?.ok) inviterName = payload.name ?? null;
-    } catch {
-      // A missing or unreachable database just means a generic landing page.
-    }
+  // Signed-in members get linked and sent home. Everyone else skips the
+  // landing page and opens registration with the code already filled in.
+  let signedIn = false;
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    signedIn = Boolean(user);
+    if (user) await applyInviteCode(invite);
+  } catch {
+    // A missing session still continues to registration.
   }
 
-  return <InviteLanding code={invite} inviterName={inviterName} />;
+  redirect(signedIn ? "/" : `/register?ref=${encodeURIComponent(invite)}`);
 }
