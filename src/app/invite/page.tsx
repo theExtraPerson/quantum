@@ -51,13 +51,6 @@ export default function InvitePage() {
     <AppShell title="Invite friends" back="/">
       <div className="space-y-4 px-4 py-4">
         <div className="app-card overflow-hidden">
-          <div className="flex flex-col items-center gap-2 px-4 py-6">
-            <Logo size={64} />
-            <p className="font-display text-xl font-semibold">{BRAND_NAME}</p>
-            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-              {BRAND_TAGLINE}
-            </p>
-          </div>
 
           <div className="space-y-3 p-4">
             <div>

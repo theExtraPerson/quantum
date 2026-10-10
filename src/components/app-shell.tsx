@@ -21,6 +21,7 @@ import {
   Share2,
   User,
   Users,
+  Table2Icon
 } from "@/components/icons";
 import { ThemeToggle } from "@/components/theme";
 import { useSessionUser } from "@/hooks/use-app-data";
@@ -28,6 +29,7 @@ import { usePwaInstall } from "@/hooks/use-pwa-install";
 import { BRAND_NAME } from "@/lib/platform";
 import { createClient, supabaseConfigured } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
+import { Table } from "lucide-react";
 
 const MENU = [
   { href: "/", label: "Dashboard", icon: House },
@@ -45,7 +47,7 @@ const BOTTOM = [
   { href: "/products", label: "Products", icon: Bot },
   { href: "/invite", label: "Invite", icon: Share2 },
   { href: "/orders", label: "Revenue", icon: Package },
-  { href: "/mine", label: "Mine", icon: User },
+  { href: "/mine", label: "Table", icon: Table2Icon },
 ] as const;
 
 function isActive(pathname: string, href: string) {

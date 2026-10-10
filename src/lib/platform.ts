@@ -166,7 +166,7 @@ export function isWithdrawWindowOpen(start: string, end: string) {
 }
 
 export function formatWithdrawWindow(start: string, end: string) {
-  return `${normalizeTime(start)} – ${normalizeTime(end)} (Africa/Kampala)`;
+  return `${normalizeTime(start)} – ${normalizeTime(end)}`;
 }
 
 /** Kampala weekend: Saturday or Sunday. */

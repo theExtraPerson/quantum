@@ -45,6 +45,7 @@ export {
   Store,
   Sun,
   TrendingUp,
+  Table2Icon,
   User,
   Users,
   Wallet,
